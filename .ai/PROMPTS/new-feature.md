@@ -1,0 +1,44 @@
+> 交互：一次只问一题；优先可点选选项；Ready 前不执行。
+
+# Prompt：新功能
+
+> 路由到正确模式与阶段，不直接开写。
+
+---
+
+## 必读
+
+- `.ai/AGENT.md`
+- `.ai/WORKFLOW.md`
+- `.ai/STATE.md`
+- `.ai/TASKS.md`
+- `.ai/PROMPTS/bootstrap.md`（若任务未启动）
+
+---
+
+## 执行清单
+
+```md
+任务类型 = feature。
+
+若 STATE 未就绪：先走 bootstrap（mode + process_weight + task 确认）。
+
+确认后：
+- greenfield full：从 discover 开始
+- greenfield light：从 discover 开始（合并 spec/architecture 到后续 plan）
+- brownfield/hybrid full：从 recon → align → impact → plan ...
+- brownfield/hybrid light：从 recon → plan ...
+
+全程使用交互式选项，不要让用户手写长文档。
+进入 build 前必须满足 AGENT 中的最低条件。
+```
+
+---
+
+## 用户可粘贴
+
+```md
+目标：{{一句话}}
+已知约束：{{可选}}
+期望上线形态：{{可选}}
+```

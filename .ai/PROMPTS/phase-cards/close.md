@@ -4,7 +4,7 @@
 收尾、回写、可传承。
 
 ## Interaction Rule
-- 一次只问一题；优先可点选；未确认不进入下一动作
+- 一次只问一题；优先可点选；普通阶段按计划自动衔接，关键门禁单独确认
 
 ## Allowed
 - 更新 CHANGELOG / TASKS / STATE

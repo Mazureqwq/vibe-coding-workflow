@@ -9,6 +9,14 @@
 ## 快照
 
 ```yaml
+schema_version: 1
+workflow_version: 1
+session_id: null
+checkpoint_id: null
+last_checkpoint_at: null
+```
+
+```yaml
 mode: unknown                  # greenfield | brownfield | hybrid | unknown
 process_weight: unknown        # full | light | auto | unknown
 current_phase: unstarted       # 见 WORKFLOW.md
@@ -139,7 +147,7 @@ open_questions: []
 
 ```yaml
 next_action:
-  intent: bootstrap            # bootstrap | interview | wait_confirmation | execute_phase
+  intent: bootstrap            # bootstrap | interview | wait_confirmation | resume | execute_phase
   phase: null
   summary: 等待首次模式判定、流程重量选择与任务确认
 ```
@@ -158,6 +166,7 @@ interview:
   queue: []                    # 待问 id 列表
   asked: []                    # 已问 id
   answers: {}                  # id -> 用户选择/补充
+answer_status: {}            # id -> confirmed | inferred | needs_review
   ready_for_execution: false
   execution_confirmed: false
 ```
@@ -172,6 +181,20 @@ interview:
 
 ---
 
+
+---
+
+## Checkpoint
+
+```yaml
+checkpoint:
+  status: clean              # clean | paused | needs_review
+  summary: null
+  safe_to_resume: true
+  pending_user_action: null
+```
+
+> 每次停止、暂停、阶段完成或等待用户时更新 checkpoint。恢复时优先读取本节，不重新扫描全部流程。
 ## 维护规则
 
 1. 新任务先确认 `mode` + `process_weight`
@@ -181,6 +204,8 @@ interview:
 5. 本文件保持短而结构化，细节放到 TASKS 或其他文档
 6. 访谈期间维护 interview.queue；禁止一轮多个决策题
 7. ready_for_execution 前不得进入执行态
+8. 用户修改答案时维护 answer_status，并复核受影响结论
+9. 暂停或等待用户时更新 checkpoint，恢复时从 checkpoint 继续
 
 ---
 

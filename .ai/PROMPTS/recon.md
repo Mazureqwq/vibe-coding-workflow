@@ -1,11 +1,6 @@
-> 交互：一次只问一题；优先可点选选项；Ready 前不执行。
-
 # Prompt：已有项目梳理（Recon 入口）
 
-> 用于 brownfield/hybrid 项目理解。  
-> 不改业务代码，只形成可确认的项目理解简报。
-
----
+> 先快速建立可用理解，再按任务风险决定是否深入；不默认无限扫描。
 
 ## 必读
 
@@ -14,19 +9,17 @@
 - `.ai/STATE.md`
 - `.ai/PROMPTS/phase-cards/recon.md`
 
----
-
 ## 执行清单
 
 ```md
-你处于 recon 阶段。
+你处于 recon 阶段，不改业务代码。
 
-1. 扫描技术栈、目录、入口、脚本、测试、关键模块
-2. 输出短简报（事实，不臆测）
-3. 对不确定点给选项请用户确认
-4. 确认后写入 STATE.confirmed 与（如需要）ARCHITECTURE/ENGINEERING 草案
-5. 根据 process_weight 建议下一阶段：
-   - full → align
-   - light → plan（但先做轻量 align/impact 检查）
-6. 不进入 build
+1. 先做 quick recon：技术栈、包管理器、入口、脚本、测试、任务相关目录
+2. 输出 5–10 行事实摘要，并标记 unknown / inferred
+3. 根据任务影响推荐 recon 深度：quick / focused / deep
+4. 一次只询问是否继续深入，不追加无关问题
+5. 用户确认后再读取下一层；若当前理解足够，允许进入下一阶段
+6. 把确认后的摘要写入 STATE；重要结构变化才更新 ARCHITECTURE
+
+如果发现公共层、架构、权限、数据链路或高回归风险，必须提议升级流程重量。
 ```

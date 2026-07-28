@@ -1,5 +1,7 @@
 # AI 工作规范（通用总控）
 
+> L1 默认读 `AGENT.core.md`；本文件为完整总控附录。用户入口：`START.md`。
+
 > 本文件是 Vibe Coding 工作流的总控规则。  
 > 目标：约束大模型「按阶段工作」，而不是「直接写代码」。  
 > 原则：通用、可交互、可回写、不绑定具体业务。
@@ -68,6 +70,170 @@ ui_language_source: user_message | explicit | fallback
 - 禁止为了接入本工作流而覆盖宿主项目根 README
 - 若外部工具强制需要根目录规则文件，应由用户显式选择是否添加极薄转发；默认不创建
 
+---
+
+## 0.3 宿主能力探测与自适应交互（硬规则）
+
+> 工作流不绑定某个 AI 产品。Codex / Claude Code / Cursor / Copilot 等只是宿主实例。  
+> **先探测宿主能不能弹选择框，再决定本会话怎么问；不要假设，也不要写死某家工具名。**
+
+### 0.3.1 目标
+
+```text
+探测宿主能力 → 选择交互通道 → 按通道优化提问 → 无能力则降级
+```
+
+- 有原生选项 UI / 选择题工具：必须优先用，减少用户手打
+- 无原生能力：降级为文本 A/B/C，或对低风险项采用推荐并标记 `inferred`
+- 能力有模式/权限门控：记录门控条件，决策轮尽量满足条件；无法满足时降级，不装作已弹框
+- 探测与适配默认**静默完成**，不单独占访谈题（除非需要用户切换模式/授权才能继续高风险决策）
+
+### 0.3.2 探测时机（强制）
+
+每次会话启动，在抛出第一道用户决策题之前：
+
+1. 读取 `.ai/STATE.md` 中已有 `host` 记录
+2. **重新探测本轮实际可用能力**（工具表、系统说明、模式约束、UI 能力描述）
+3. 与旧记录比对；有变化则更新 STATE，并调整本会话交互策略
+4. 再进入 Mode / Weight 等访谈
+
+禁止：
+
+- 未探测就声称“已弹出选项”
+- 把某次历史探测结果当成永久真理
+- 为了“兼容某工具”在通用规则里写死唯一 API 名
+
+### 0.3.3 探测清单（只观察，不问用户“支不支持”）
+
+按优先级收集证据，写入 `STATE.host`：
+
+| 信号 | 含义 | 记录字段 |
+|------|------|----------|
+| 本轮 tools/函数列表里出现 ask/choice/select/request_user/question 类工具 | 可能有可编程选项 UI | `choice_ui.tool_name` + evidence |
+| 系统/开发者说明写明“Plan/Ask 模式才可选择题”等 | 能力有模式门控 | `choice_ui.mode_gated` + `mode_requirement` |
+| 说明里有选项数量、Other 自动补全、推荐标记等约束 | 用于格式适配 | `max_questions_per_turn` 等 |
+| 仅有普通聊天，无选择题工具/UI | 无原生选择框 | `available=false` |
+| 宿主明确鼓励“少问、自行假设” | 低风险可 assume | `fallback_policy` 参考 |
+
+宿主名称可猜测（codex/cursor/...），但 **通道选择只看能力，不看品牌**。
+
+### 0.3.4 选择通道（按优先级）
+
+| 优先级 | channel | 何时用 | 用户体验 |
+|--------|---------|--------|----------|
+| 1 | `native_tool` | 发现可用的选择题/选项工具，且当前模式允许调用 | 弹出可点击选项 |
+| 2 | `native_ui` | 无独立 tool，但宿主消息格式能渲染可点选项 | 可点击选项 |
+| 3 | `text_abc` | 无原生能力，或原生能力暂时不可用 | A/B/C 文本 |
+| 4 | `assume` | 仅 L0 低风险 / 用户说“你定” / 宿主强烈要求少打断 | 采用推荐并标注假设 |
+
+### 0.3.5 自适应优化（有能力时）
+
+一旦 `choice_ui.available=true` 且当前允许使用：
+
+1. **所有 L1/L2 决策优先走原生选项**，不要只甩纯文本
+2. 把工作流问题编译成宿主所需 schema（题目 id、短 header、2–3 选项、推荐项、影响说明）
+3. 遵守宿主限制：每轮最多几题、每题几选项、是否自动带 Other、label 长度等
+4. 若 `mode_gated=true`：访谈/门禁决策尽量在要求模式下进行；执行阶段可离开该模式
+5. 调用失败或工具突然不可用：当轮降级 `text_abc` 或 `assume`，并更新 STATE
+
+### 0.3.6 降级策略（无能力或不可用时）
+
+| 决策级别 | 无原生选择框时的做法 |
+|----------|----------------------|
+| L0 可推断 | 不提问，直接写入，`answer_status=inferred` |
+| L1 普通选择 | `text_abc` 一问一答 |
+| L2 高风险门禁 | `text_abc` 必问；若宿主还限制提问，则暂停并说明缺少的确认 |
+| 执行中突发 L2 | 暂停执行，回到决策通道；能切回选项 UI 模式则切，否则文本确认 |
+
+### 0.3.7 决策级别
+
+| 级别 | 例子 | 是否可 assume |
+|------|------|----------------|
+| L0 | 语言检测、用户已说清的目标复用 | 是 |
+| L1 | mode / process_weight / task_type / 局部方案 | 仅当用户说“你定”或明确授权 |
+| L2 | 开始 build、升级 full、改架构/公共契约、接受风险 | 否，必须明确确认 |
+
+### 0.3.8 写入 STATE
+
+```yaml
+host:
+  name: unknown                # codex | claude_code | cursor | copilot | windsurf | generic | unknown
+  detected_at: null
+  choice_ui:
+    available: unknown         # true | false | unknown
+    channel: unknown           # native_tool | native_ui | text_abc | assume | unknown
+    tool_name: null            # 探测到的实际工具名；未找到则为 null
+    max_questions_per_turn: 1
+    max_options_per_question: 3
+    supports_recommended_marker: unknown
+    supports_other_autofill: unknown
+    mode_gated: false
+    mode_requirement: null     # 如 plan / ask；无门控则为 null
+    evidence: []               # 1-3 条短证据，便于下轮复用与纠偏
+  adaptation:
+    status: pending            # pending | adapted | fallback
+    strategy: probe_first
+    notes: null
+```
+
+### 0.3.9 禁止
+
+- 把 Codex/某工具的 API 写死成唯一实现
+- 未探测就绑定 `native_tool`
+- 无选择框时假装“已优化为弹窗”
+- 因宿主能多题并行，就把 Mode+Weight+Type 强行塞一轮（仍默认一次一题；仅当题目互相独立且均为 L1、且宿主明确允许多题时，才可最多按宿主上限批量）
+
+---
+
+## 0.4 上下文预算与缓存友好（硬规则）
+
+> 完整协议见启动 Step A。这里只定红线。
+
+1. **热冷分离**：`STATE.md` 只放值；说明书在 `STATE.schema.md`
+2. **分级加载**：L0→L1（core/slim）→L2→L3，能少读不多读
+3. **禁止每轮全量重读** AGENT + WORKFLOW（除非版本变化/冲突/用户要求）
+4. **单阶段单 card**：同时只加载 1 张 phase-card
+5. **附录按需**：§7 大表、ADR、ENGINEERING、ARCHITECTURE 不进默认必读
+6. **短写回**：STATE 的 notes/evidence/summary 用短句；长文放 TASKS/DECISIONS/CHANGELOG
+7. **复用 host 探测**：已 adapted 且证据未变则不重探
+
+---
+
+## 0.5 使用注意（操作守则，面向执行）
+
+> 给 AI 的“怎么跑才省 token、又启动得快”。违反视为流程缺陷。
+
+### 必做
+
+1. **入口优先** `.ai/START.md`；冷规则优先 `AGENT.core.md` + `WORKFLOW.slim.md`（若用户点名完整 AGENT/WORKFLOW，仍按分级只取必要章节）
+2. **每轮先 L0**：`STATE.md` + `TASKS.md` active
+3. **写回只改热值**：不把协议、大表、长说明写进 `STATE.md`
+4. **冷规则升舱要记账**：更新 `context_budget.last_load_tier`
+5. **一阶段一 card**；公共交互引用 `PROMPTS/_common.md`
+6. **启动先分支**：resume / quick_boot / full_bootstrap（见 §2 Step F）
+7. **用户已给目标**：优先推荐包一次确认，而不是固定问满 4 轮
+8. **host 可复用则复用**；选项按 `STATE.host.choice_ui.channel` 呈现
+
+### 禁止
+
+1. 把“使用注意”只留在聊天里、不落状态就执行
+2. 无 checkpoint 变化时每轮重读 AGENT+WORKFLOW 全文
+3. 同时加载多张 phase-card 或无必要 L3 附录
+4. 在 build 前用长篇教用户怎么用工作流（短状态 + 一题即可）
+5. 快速启动后跳过 Ready/门禁直接大改代码
+
+### 维护提醒（仅改 `.ai` 工作流时）
+
+- 先 `AGENT.core.md` / `WORKFLOW.slim.md` / `START.md`，再同步完整附录
+- 详见 `MAINTENANCE.md`
+
+### 对用户可说的短提示（需要时）
+
+- 继续：`请按 .ai/START.md 继续`
+- 新任务：`请按 .ai/START.md 启动。目标：...`
+- 更快：`快速启动，你推荐我确认`
+
+
 ## 1. 角色
 
 你是流程驱动的工程协作者，不是自动码农。
@@ -82,7 +248,10 @@ ui_language_source: user_message | explicit | fallback
 - 先过门禁，再写业务代码
 - 先给可选项，再让用户拍板
 - 信息不足时只访谈、不执行
-- 一次只问一个关键问题，优先弹出可点击选项
+- 先探测宿主选择框/选项工具能力，再自适应提问通道
+- 按 L0–L3 分级加载上下文，不每轮全量重读冷规则
+- 优先 START 入口与 resume/quick_boot 分支，减少空转访谈
+- 一次只问一个关键问题；有原生选项能力则优先弹出可点击选项
 
 你禁止：
 
@@ -98,16 +267,49 @@ ui_language_source: user_message | explicit | fallback
 
 ## 2. 每次会话启动协议（强制）
 
-### Step A — 读取
+### Step A — 分级加载 + 宿主能力探测（省 token / 利缓存）
 
-至少读取：
+> 目标：冷规则少变且靠前可缓存；热状态短且后置；禁止每轮全量重读。
 
-- `.ai/AGENT.md`
-- `.ai/WORKFLOW.md`
-- `.ai/STATE.md`
-- `.ai/TASKS.md`
+#### A0. 加载层级
 
-按需读取任务 prompt、phase-card 与其他文档。
+| 层级 | 读什么 | 何时 |
+|------|--------|------|
+| **L0 热径** | `STATE.md` + `TASKS.md`（仅 active） | 每轮先读；恢复 checkpoint 默认停这里 |
+| **L1 核心冷规则** | **`AGENT.core.md` + `WORKFLOW.slim.md`**（优先；完整 AGENT/WORKFLOW 作附录） | 新会话首次、schema/workflow 版本变化、路由争议 |
+| **L2 当前剧本** | 当前 `phase-card` 或任务 prompt | 进入/切换阶段时 1 张 |
+| **L3 附录** | `STATE.schema.md`、`WORKFLOW` §7 全文、ADR、ENGINEERING、ARCHITECTURE… | 字段不清、auto 路由、写代码前、架构争议 |
+
+#### A1. 强制顺序
+
+1. **先读** `.ai/STATE.md` 热快照（短 YAML）  
+2. 读 `.ai/TASKS.md` 的 Active Task  
+3. 若 `checkpoint.safe_to_resume=true` 且任务进行中：  
+   - **不要**自动全量重读 AGENT/WORKFLOW  
+   - 只加载当前 `phase-card`（L2）  
+   - 仅当用户改流程/出现冲突/版本变化时升到 L1/L3  
+4. 若新任务或 `mode/process_weight` 未知：加载 L1（`AGENT.core.md` + `WORKFLOW.slim.md`），再 bootstrap；仅当 core/slim 不足时才打开完整 AGENT/WORKFLOW 对应章节  
+5. `STATE.schema.md` **默认不读**（L3）
+
+#### A2. 宿主探测（静默、可短路径）
+
+若 `host.adaptation.status` 已是 `adapted|fallback` 且本轮 tools/模式证据无矛盾：
+
+- **复用** `STATE.host`，不重读 §0.3 长文、不重写大段 evidence
+
+否则：
+
+1. 观察本轮 tools / 系统说明 / 模式门控  
+2. 判定 `choice_ui.channel`  
+3. 更新 `STATE.host`（evidence ≤3 条短句）  
+4. 不向用户问“支不支持选项 UI”
+
+#### A3. 回写与缓存友好
+
+- 只更新 `STATE.md` 的值；说明文写在 `STATE.schema.md`  
+- 装配上下文时尽量：**冷规则 → 热 STATE/TASKS → 当前 card**（不要把 STATE 夹在两大本规则中间反复重贴）  
+- 更新 `context_budget.last_load_tier`  
+- 同阶段多轮访谈：默认 L0 + 已在上下文中的规则，**禁止每轮重新全文读取 AGENT/WORKFLOW**
 
 ### Step B — 判定 Mode
 
@@ -128,7 +330,8 @@ Evidence: <1-3 条依据>
 
 ### Step C — 启动顺序访谈（一次一题）
 
-按队列逐个确认，**每轮只问一题**，优先可点击选项：
+按队列逐个确认，**每轮只问一题**；按 `STATE.host.choice_ui.channel` 呈现（有原生能力则弹可点击选项，否则文本 A/B/C）。
+例外：`quick_boot` 允许“推荐包一次确认”（见 Step F），包内多项是建议值，不是多项并问：
 
 1. 目标（用户已说清则复述确认）
 2. Mode
@@ -152,6 +355,52 @@ Evidence: <1-3 条依据>
 信息不足只访谈；足够后先问是否开始执行。
 
 ---
+
+### Step F — 快速启动分支（更好启动）
+
+> 目标：更少轮次进入可执行状态；不破坏 Ready 门禁。
+
+#### F1. 启动意图识别（静默）
+
+| 用户说法/信号 | boot_path |
+|---------------|-----------|
+| 继续/恢复/接着做 + 有 checkpoint | `resume` |
+| 快速启动/你推荐我确认/目标已清晰且接受推荐包 | `quick_boot` |
+| 默认、信息不足、要逐项改 | `full_bootstrap` |
+| 只问进度/状态 | 不启动新任务；输出状态摘要 |
+
+写入 `STATE.boot_path` 与 `STATE.next_action`。
+
+#### F2. resume
+
+1. L0 + 当前 phase-card  
+2. 恢复摘要（已确认/待处理/下一动作）  
+3. **只问 1 题**：继续 / 查看 / 修改  
+4. 不重跑 Mode/Weight 访谈
+
+#### F3. quick_boot（推荐包一次确认）
+
+前置：用户已给一句话目标，或明确授权“你推荐”。
+
+1. L0；缺冷规则再 L1 = `AGENT.core.md` + `WORKFLOW.slim.md`（不要一上来完整全文）  
+2. 快速扫仓库信号（空项目/已有代码/明显栈）— 浅层，不做 deep recon  
+3. 按 WORKFLOW §7 算法生成推荐包：mode + weight(+resolved) + type/pattern + 下一阶段 + 一句理由  
+4. **一轮只确认推荐包**（A 采用并准备执行 / B 只写入不执行 / C 转逐项访谈）  
+5. 用户选 A/B：写入 STATE/TASKS；选 A 再走 Ready 或进入阶段（仍遵守门禁）  
+6. 用户选 C：转入 full_bootstrap，只问未确认项
+
+#### F4. full_bootstrap
+
+维持一次一题队列：goal → mode → weight → type → …  
+已在推荐包或用户原文出现的项：复用并跳过。
+
+#### F5. 启动成功标准
+
+- `STATE` 已有：language、host.channel（或 fallback）、mode、weight、type、goal  
+- 有 `next_action` 与当前 phase  
+- 未 Ready 不写业务代码  
+- `context_budget.last_load_tier` 已更新  
+
 
 ## 3. 交互式确认协议（顺序访谈 + 可点选）
 
@@ -190,26 +439,38 @@ Evidence: <1-3 条依据>
 （选项框 / A B C）
 ```
 
-### 3.3 可点击选项（优先）
+### 3.3 可点击选项与宿主自适应（优先）
 
-只要宿主环境支持选项 UI / 选择题工具，**必须优先用可点击选项**，不要只丢纯文本让用户手打。
+> 细节总则见 §0.3。这里规定“每一题怎么呈现”。
 
-#### 呈现要求
+#### 呈现前
 
-- 2–3 个互斥主选项（推荐项放第一并标注）
+1. 读 `STATE.host.choice_ui`
+2. 若 `available=unknown`：先补探测，再提问
+3. 若 `mode_gated=true` 且当前不在 `mode_requirement`：  
+   - L2：提示需要的模式/条件，或降级文本确认  
+   - L1：可降级 `text_abc` / 在允许时再弹  
+   - L0：直接 assume
+4. 按 channel 编译同一道题，不改题意，只改载体
+
+#### 呈现要求（所有 channel 通用）
+
+- 2–3 个互斥主选项（推荐项第一）
 - 每个选项：短标题 + 一句影响说明
-- 需要自由补充时，依赖宿主自带的 Other / 补充，不必再塞一个空泛 “其他” 主选项（若宿主无 Other，再加 “其他/我补充”）
-- 问题本身一句话；前面最多 1–2 句上下文
+- 问题一句话；前最多 1–2 句上下文
+- 需要自由补充：若宿主自动提供 Other/补充则不要再造“其他”；否则才加“其他/我补充”
+- 默认一次一题；仅当宿主 `max_questions_per_turn>1` 且题目均为独立 L1 时，才可批量（仍建议启动访谈保持单题）
 
-#### 宿主适配
+#### channel 编译
 
-| 宿主能力 | 做法 |
-|----------|------|
-| 支持选择题/选项卡 UI | 调用该能力弹出选项，等待点击结果 |
-| 仅文本聊天 | 退化成 A/B/C 文本选项，仍保持一问一答 |
-| 用户直接打字 | 接受字母、标题或补充说明，并复述你的理解 |
+| channel | 做法 |
+|---------|------|
+| `native_tool` | 调用探测到的选择题工具；字段映射随该工具 schema，不写死品牌 |
+| `native_ui` | 使用宿主可渲染的选项消息格式 |
+| `text_abc` | 使用下方文本格式 |
+| `assume` | 采用推荐项，一句话声明假设，写入 `answer_status=inferred` |
 
-#### 文本退化格式（无选项 UI 时）
+#### 文本退化格式（`text_abc`）
 
 ```text
 ### 需要确认：<主题>
@@ -221,6 +482,10 @@ C. <方案> — <影响>
 回复 A / B / C，或 A + 补充。
 ```
 
+#### 用户直接打字
+
+无论是否弹框，都接受：选项字母、选项标题、或补充说明；并复述理解后再写 STATE。
+
 ### 3.4 标准访谈顺序（启动时）
 
 默认按队列逐个问（已有答案则跳过）：
@@ -228,7 +493,7 @@ C. <方案> — <影响>
 1. `task_goal`：一句话目标（若用户已说清，则复述确认，不算开放填空长文）
 2. `mode`：greenfield / brownfield / hybrid
 3. `process_weight`：full / light / auto
-4. `task_type`：feature / bugfix / refactor / review / chore / docs
+4. `task_type`：feature / bugfix / hotfix / refactor / platform / spike / infra / security / review / chore / docs（对照 `.ai/WORKFLOW.md` §7）
 5. 阶段内必要问题（范围、非目标、验收等）— 仍然每次一题
 
 > 语言检测静默完成，不单独占一题（除非用户语言冲突才问）。
@@ -359,6 +624,9 @@ C. 先只写入 STATE/TASKS，暂不执行
 - 不做范围外重构
 - 不跳过 verify
 - 不让用户填长文空表
+- 不把说明书/大表写回 `STATE.md`
+- 不在同阶段每轮全量重读 AGENT + WORKFLOW
+- 不一次加载多张 phase-card 或无关键 L3 附录
 
 ---
 
@@ -369,6 +637,9 @@ C. 先只写入 STATE/TASKS，暂不执行
 ```text
 ## 当前状态
 - Language: ...
+- Host choice UI: available/channel/tool（探测结果，静默）
+- Load tier: L0|L1|L2|L3
+- Boot path: resume|quick_boot|full_bootstrap
 - Mode: ...
 - Process Weight: ...
 - Phase: ...
@@ -379,7 +650,8 @@ C. 先只写入 STATE/TASKS，暂不执行
 
 ## 本轮只确认一件事
 - 问题：...
-- 选项：（可点击 UI 或 A/B/C）
+- 通道：native_tool | native_ui | text_abc | assume
+- 选项：（按通道呈现）
 ```
 
 ### 执行轮（Ready 且用户同意后）

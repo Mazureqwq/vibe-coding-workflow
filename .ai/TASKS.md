@@ -20,11 +20,12 @@ timebox: null
 ```yaml
 id: null                    # T-001
 title: null
-type: null                  # feature | bugfix | refactor | review | chore | docs
+type: null                  # feature | bugfix | hotfix | refactor | platform | spike | infra | security | review | chore | docs
 priority: P1
 status: todo                # todo | doing | blocked | verify | done
 mode: null                  # greenfield | brownfield | hybrid
 process_weight: null        # full | light | auto
+workflow_pattern: null      # feature_delivery | bugfix | hotfix | refactor | platform | spike | infra | security | review | chore
 phase: null
 acceptance_criteria: []
 non_goals: []
@@ -56,6 +57,7 @@ verification: []
 ### T-XXX 标题
 
 - 类型：
+- 典型流：feature_delivery | bugfix | hotfix | refactor | platform | spike | infra | security | review | chore
 - 模式：
 - 流程重量：full | light | auto
 - 当前阶段：

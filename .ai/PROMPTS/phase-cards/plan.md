@@ -1,10 +1,9 @@
 # Phase Card: plan
 
+> 交互与加载：`PROMPTS/_common.md`；本卡只定义本阶段差异。
+
 ## Goal
 形成可执行、可验证的实施计划。
-
-## Interaction Rule
-- 一次只问一题；优先可点选；普通阶段按计划自动衔接，关键门禁单独确认
 
 ## Allowed
 - 任务切片、顺序、测试策略、回滚点

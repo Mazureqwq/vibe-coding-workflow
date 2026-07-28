@@ -1,18 +1,16 @@
-> 交互：一次只问一题；优先可点选选项；Ready 前不执行。
-
 # Prompt：新功能
 
 > 路由到正确模式与阶段，不直接开写。
 
 ---
 
-## 必读
+## 加载
 
-- `.ai/AGENT.md`
-- `.ai/WORKFLOW.md`
-- `.ai/STATE.md`
-- `.ai/TASKS.md`
-- `.ai/PROMPTS/bootstrap.md`（若任务未启动）
+- 交互与加载：`.ai/PROMPTS/_common.md`
+- 热快照：`.ai/STATE.md` + `.ai/TASKS.md`
+- 冷规则：按 AGENT Step A 分级；勿每轮全量重读
+- 未启动先 bootstrap
+- 路由见 WORKFLOW §7（L3 按需）
 
 ---
 

@@ -1,10 +1,9 @@
 # Phase Card: recon
 
+> 交互与加载：`PROMPTS/_common.md`；本卡只定义本阶段差异。
+
 ## Goal
 理解已有项目现实，不先改代码。
-
-## Interaction Rule
-- 一次只问一题；优先可点选；普通阶段按计划自动衔接，关键门禁单独确认
 
 ## Allowed
 - 扫描目录、依赖、脚本、入口、测试、关键模块

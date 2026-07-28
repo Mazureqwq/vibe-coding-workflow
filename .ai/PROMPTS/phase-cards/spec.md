@@ -1,10 +1,9 @@
 # Phase Card: spec
 
+> 交互与加载：`PROMPTS/_common.md`；本卡只定义本阶段差异。
+
 ## Goal
 把目标变成可验收需求。
-
-## Interaction Rule
-- 一次只问一题；优先可点选；普通阶段按计划自动衔接，关键门禁单独确认
 
 ## Allowed
 - 场景拆解、优先级选项、边界确认

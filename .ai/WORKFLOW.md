@@ -1,5 +1,7 @@
 # 工作流定义（双模式 + 可选流程重量 + 阶段门禁）
 
+> L1 默认读 `WORKFLOW.slim.md`；本文件作完整地图/大表附录（L3）。
+
 > 定义 Vibe Coding 的标准流程。  
 > 只描述阶段、门禁、交互、路由；不绑定具体业务。
 > 工作流自包含于 `.ai/`，不污染宿主项目根目录文件。
@@ -7,6 +9,15 @@
 ---
 
 ## 1. 启动时必须完成的判定
+
+### 1.0 启动入口与使用注意
+
+- **推荐入口**：`.ai/START.md`（短） > bootstrap prompt > `AGENT.core.md` + `WORKFLOW.slim.md` > 完整 AGENT/WORKFLOW 全文
+- **使用注意**（硬）：先 L0；L1 用 core/slim；STATE 只写值；同阶段不全量重读；一阶段一 card；完整大表 L3 按需
+- **启动分支**：`resume` | `quick_boot` | `full_bootstrap`（见 AGENT Step F）
+- 用户只说“继续”且有 checkpoint → 不得重新访谈
+- 用户给目标并接受推荐 → 优先推荐包一次确认，再 Ready
+
 
 每次新任务开始，AI 先静默记录交互语言，再按顺序交互确认（**一次只问一题**，优先可点击选项）：
 
@@ -18,9 +29,13 @@
 
 ### 1.1 顺序访谈与可点选
 
+- 上下文按 L0–L3 **分级加载**（见 `.ai/AGENT.md` Step A / §0.4）；热数据用短 `STATE.md`，说明见 `STATE.schema.md`
+- 启动时先**静默探测宿主选择框能力**，写入 `STATE.host`（见 `.ai/AGENT.md` §0.3）
 - 启动项（目标 / Mode / Weight / Type）**分多轮**完成，不合并成一张总问卷
 - 每轮：1 个问题 + 2–3 个选项（推荐项第一）
-- 宿主支持选项 UI 时必须弹出选项供点击；否则用 A/B/C 文本退化
+- 按探测结果选择通道：`native_tool` / `native_ui` / `text_abc` / `assume`
+- 有原生选项能力时必须用可点击选项；否则文本 A/B/C 或低风险 assume
+- 能力若有模式门控：决策轮尽量满足；无法满足则降级，不假装已弹框
 - 全部齐备后，单独一题确认“是否开始执行”
 - 未 Ready 前只更新 STATE/TASKS，不进入 build
 
@@ -32,12 +47,23 @@
 - 将 `ui_language` 写入 `STATE.md`
 - 模板原文语言可以是中文/英文，但展示给用户时要翻译成用户语言
 
+### 1.3 宿主能力自适应
+
+- 不绑定 Codex / Claude / Cursor 等具体产品；只绑定“能力 → 通道”
+- 探测信号：本轮 tools、系统说明、模式约束、是否能渲染可点选项
+- 有选择题工具/UI：把工作流问题编译为宿主 schema 并调用
+- 无能力：`text_abc`；L0 可 `assume` 并标记 `inferred`
+- 每会话重新校正 `STATE.host`；历史结果仅作参考
+- 详细协议：`.ai/AGENT.md` §0.3
+
 
 ---
 
 ## 2. 流程重量（交互选择，不写死）
 
 ### 2.1 单题选项卡（仅流程重量这一轮使用；不要夹带其他问题）
+
+> 呈现方式跟随 STATE.host.choice_ui.channel：能弹框就弹框，否则用下列 A/B/C 文本。
 
 ```text
 ### 需要确认：流程重量
@@ -67,16 +93,19 @@ C. auto（推荐）— 由我按风险推荐 full 或 light，你确认后再执
 
 #### auto
 
-AI 推荐规则（需展示理由并让用户确认）：
+AI 推荐规则（需展示理由并让用户确认；完整对照见 §7.2 / §7.3）：
 
 | 信号 | 推荐 |
 |------|------|
-| 空项目、新子系统、新技术选型 | full |
-| 多模块改动、权限/数据/公共基础设施 | full |
-| 单点 bug、文案、局部 UI、小配置 | light |
+| 空项目、新子系统、新技术选型、平台底座 | full |
+| 多模块改动、权限/数据/公共基础设施、安全合规 | full |
+| 重构/升级且影响面不清 | full 或先 focused recon 再定 |
+| 单点 bug、文案、局部 UI、小配置、纯文档 | light |
+| 预研/Spike（时间盒） | light（交付结论） |
+| 线上热修 | light 止血；根治另开任务 |
 | 信息不足 | 先问 1 个关键问题，再推荐 |
 
-`auto` 确认后，把 `resolved_as: full|light` 写入 STATE。
+`auto` 确认后，把 `resolved_as: full|light` 写入 STATE，并可记录 `workflow_pattern`。
 
 ---
 
@@ -157,16 +186,97 @@ light 流程也必须做最少效力声明（至少 ENGINEERING/ARCHITECTURE/TAS
 
 ## 7. 任务类型路由
 
+> 路由依据：**大厂真实研发流 → 任务类型 → 默认重量 → 阶段路径**。  
+> 用户仍可改重量；AI 只给推荐与风险，不写死。
+
+### 7.1 类型速查
+
 | 类型 | 默认建议重量 | 备注 |
 |------|--------------|------|
-| 新项目/大功能 | full | 可被用户改成 light，但要提示风险 |
-| 小功能 | light 或 auto | 涉及公共层时转 full |
-| bugfix | light 或 auto | 系统级缺陷转 full |
-| refactor | full 或 auto | 行为不变也要 impact/verify |
-| review | light | 不进入 build |
-| chore/docs | light | 有流程/规范变更时走 close 回写 |
+| 新项目/大功能 `feature` | full | 可被用户改成 light，但要提示风险 |
+| 小功能 `feature` | light 或 auto | 涉及公共层时转 full |
+| `bugfix` / `hotfix` | light 或 auto | 系统级/数据/权限缺陷转 full；线上事故先止血 |
+| `refactor` | full 或 auto | 行为不变也要 impact/verify |
+| `platform` | full 或 auto | 组件库/中台/BFF/微前端底座等，强调边界与接入 |
+| `spike` | light | 时间盒预研；交付结论，默认不进大范围 build |
+| `infra` / 变更发布 | light 或 full | 低风险配置 light；涉及发布链路/权限/数据 full |
+| `security` | full 或 auto | 漏洞/合规；按风险时限推进，verify 必做 |
+| `review` | light | 不进入 build |
+| `chore` / `docs` | light | 有流程/规范变更时走 close 回写 |
 
 任何跳过阶段必须写入 `STATE.skipped_phases` 并确认。
+
+### 7.2 大厂典型流程对照表
+
+> 用途：识别用户意图后，先映射到「典型流」，再推荐 `task_type` + `process_weight` + 阶段侧重。  
+> 对照的是业界常见做法，不绑定某家公司的制度名称。
+
+| 大厂典型流 | 信号（用户怎么说/现场像什么） | 建议 type | 默认重量 | 阶段侧重 | 关键门禁 |
+|------------|--------------------------------|-----------|----------|----------|----------|
+| 功能迭代交付 | 新功能、版本需求、业务迭代、“做个 XX” | `feature` | 大=full；小=light/auto | full：discover/spec/architecture/plan…<br>light：discover/recon→plan→build→verify | Ready 后才 build；公共层/数据/权限改动升级 full |
+| Bug / 缺陷修复 | 报错、复现、测试打回、偶现问题 | `bugfix` | light/auto | recon/impact（轻）→plan→build→verify→close | 先复现与影响面；禁止无根因乱改 |
+| 线上事故 / 热修 | 生产故障、P0/P1、先恢复再复盘 | `hotfix` | light（止血）→ 必要时追加 full 复盘任务 | 最小 build→verify→close；复盘可另开任务 | 先止血与回滚；根治与防回归分开 |
+| 重构 / 架构演进 | 升级框架、拆模块、治理坏味道、性能重构 | `refactor` | full/auto | recon→align→impact→architecture?/plan→build→verify | 要有基线与迁移策略；双轨/开关/分批优先于大爆炸 |
+| 平台 / 中台能力 | 组件库、脚手架、权限中心、BFF、微前端底座 | `platform` | full/auto | discover/spec→architecture→plan→build→verify→close | 先定边界/API/兼容与接入成本；试点再推广 |
+| 预研 / Spike | 可行性、选型对比、摸底、时间盒试验 | `spike` | light | discover→plan→（可选小 build）→close | 时间盒；交付 Go/No-Go 结论与代价，不默认产品化 |
+| 基础设施 / 发布变更 | CI/CD、扩容、配置、监控、路由、环境 | `infra` | 低风险 light；高风险 full | plan→build/verify 或变更检查清单→close | 回滚、观察窗口、风险说明；高风险需 L2 确认 |
+| 安全 / 合规 | 漏洞、CVE、越权、隐私、合规整改 | `security` | full/auto | impact→plan→build→verify→close | 按风险时限；临时缓解与正式修复都要记录 |
+| 跨团队大型项目 | 多团队依赖、里程碑、年中/战略项目 | `feature`/`platform` | full | 完整链路 + 里程碑化 plan | 接口冻结、集成窗口、分阶段上线；STATE 记里程碑 |
+| 日常小迭代 | 文案、小 UI、局部配置、文档 | `chore`/`docs`/`feature` | light | plan→build→verify→close | 影响出本模块则升级；规范变更要 close 回写 |
+| Code Review | 只审 PR/方案，不开发 | `review` | light | recon/align 轻量 → review 结论 → close | 不进入 build；结论可写入 DECISIONS/TECH_DEBT |
+
+### 7.3 推荐算法（auto 与默认提示用）
+
+按顺序匹配，**先命中先应用**；展示给用户时用一句话说明命中了哪条：
+
+1. **事故热修**：生产不可用 / 明确 P0 → `hotfix` + light（止血），并提示后续复盘任务  
+2. **安全合规**：漏洞/越权/敏感数据 → `security` + full/auto  
+3. **预研**：“可行性/对比/摸底/两天验证” → `spike` + light  
+4. **重构演进**：无行为变更的结构/性能/升级 → `refactor` + full/auto  
+5. **平台能力**：多业务复用、SDK/底座/中台 → `platform` + full/auto  
+6. **基础变更**：发布、CI、配置、环境、监控 → `infra`；触达权限/数据/全局流量则 full  
+7. **缺陷**：有预期但行为错误 → `bugfix`；影响公共层/数据模型则升级 full  
+8. **纯评审** → `review` + light  
+9. **文档/杂项** → `docs`/`chore` + light  
+10. **其余交付** → `feature`；空项目/多模块/公共层/数据权限 → full，否则 light/auto
+
+### 7.4 升级与降级触发
+
+**必须提示升级 full（或补开阶段）**
+
+- 改到公共库、鉴权、支付、数据模型、对外 API 契约  
+- light 进行中发现跨模块影响或文档严重冲突  
+- 需要新架构/新技术选型  
+- 安全风险或无法快速回滚  
+
+**可建议保持 light**
+
+- 单文件/单组件、纯展示、文案、文档  
+- 已有清晰复现的局部 bug  
+- spike 仅验证结论  
+
+**热修特例**
+
+```text
+hotfix（最小修复）→ verify → close
+另开任务：postmortem / 根治（bugfix 或 refactor，常 full）
+```
+
+不要把“根治重构”塞进同一热修任务，除非用户明确要求且接受风险。
+
+### 7.5 写入 STATE / TASKS
+
+确认类型与重量后写入：
+
+```yaml
+task_type: feature | bugfix | hotfix | refactor | platform | spike | infra | security | review | chore | docs
+process_weight: full | light | auto
+process_weight_decision.resolved_as: full | light   # auto 时必填
+# 可选：
+# workflow_pattern: feature_delivery | bugfix | hotfix | refactor | platform | spike | infra | security | review | chore
+```
+
+阶段跳过、合并、升级理由写入 `skipped_phases` 或 `phases.*.notes`。
 
 ---
 
@@ -222,6 +332,8 @@ AI 应识别这些意图：`查看进度`、`修改答案`、`返回上一阶段
 执行前先更新 `STATE.checkpoint`，恢复时从 checkpoint 继续，不重置已确认内容。
 
 ## 9. 与 PROMPTS 的关系
+
+公共交互与加载约定见 `.ai/PROMPTS/_common.md`；phase-card 只保留阶段差异，避免重复页眉消耗 token。
 
 ```text
 用户需求

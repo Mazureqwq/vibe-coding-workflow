@@ -1,10 +1,9 @@
 # Phase Card: impact
 
+> 交互与加载：`PROMPTS/_common.md`；本卡只定义本阶段差异。
+
 ## Goal
 评估需求落到真实模块后的影响与风险。
-
-## Interaction Rule
-- 一次只问一题；优先可点选；普通阶段按计划自动衔接，关键门禁单独确认
 
 ## Allowed
 - 映射影响面、回归路径、依赖关系

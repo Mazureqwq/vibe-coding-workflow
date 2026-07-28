@@ -1,17 +1,13 @@
-> 交互：一次只问一题；优先可点选选项；Ready 前不执行。
-
 # Prompt：重构
 
 ---
 
-## 必读
+## 加载
 
-- `.ai/AGENT.md`
-- `.ai/WORKFLOW.md`
-- `.ai/STATE.md`
-- `.ai/TECH_DEBT.md`
-- `.ai/PROMPTS/phase-cards/impact.md`
-- `.ai/PROMPTS/phase-cards/plan.md`
+- 交互与加载：`.ai/PROMPTS/_common.md`
+- 热快照：`.ai/STATE.md` + `.ai/TASKS.md`
+- 冷规则：按 AGENT Step A 分级；勿每轮全量重读
+- 按需：TECH_DEBT、architecture/impact card
 
 ---
 

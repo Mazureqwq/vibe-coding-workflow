@@ -1,10 +1,9 @@
 # Phase Card: close
 
+> 交互与加载：`PROMPTS/_common.md`；本卡只定义本阶段差异。
+
 ## Goal
 收尾、回写、可传承。
-
-## Interaction Rule
-- 一次只问一题；优先可点选；普通阶段按计划自动衔接，关键门禁单独确认
 
 ## Allowed
 - 更新 CHANGELOG / TASKS / STATE

@@ -2,12 +2,12 @@
 
 > 先快速建立可用理解，再按任务风险决定是否深入；不默认无限扫描。
 
-## 必读
+## 加载
 
-- `.ai/AGENT.md`
-- `.ai/WORKFLOW.md`
-- `.ai/STATE.md`
-- `.ai/PROMPTS/phase-cards/recon.md`
+- 交互与加载：`.ai/PROMPTS/_common.md`
+- 热快照：`.ai/STATE.md` + `.ai/TASKS.md`
+- 冷规则：按 AGENT Step A 分级；勿每轮全量重读
+- 当前 card：phase-cards/recon.md
 
 ## 执行清单
 

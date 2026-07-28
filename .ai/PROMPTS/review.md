@@ -1,15 +1,13 @@
-> 交互：一次只问一题；优先可点选选项；Ready 前不执行。
-
 # Prompt：Code Review
 
 ---
 
-## 必读
+## 加载
 
-- `.ai/AGENT.md`
-- `.ai/ENGINEERING.md`
-- `.ai/ARCHITECTURE.md`（按效力）
-- `.ai/STATE.md`
+- 交互与加载：`.ai/PROMPTS/_common.md`
+- 热快照：`.ai/STATE.md` + `.ai/TASKS.md`
+- 冷规则：按 AGENT Step A 分级；勿每轮全量重读
+- 按需：ENGINEERING、ARCHITECTURE（看 doc_authority）
 
 ---
 

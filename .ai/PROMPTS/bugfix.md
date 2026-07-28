@@ -1,17 +1,13 @@
-> 交互：一次只问一题；优先可点选选项；Ready 前不执行。
-
 # Prompt：Bug 修复
 
 ---
 
-## 必读
+## 加载
 
-- `.ai/AGENT.md`
-- `.ai/WORKFLOW.md`
-- `.ai/STATE.md`
-- `.ai/PROMPTS/phase-cards/impact.md`
-- `.ai/PROMPTS/phase-cards/build.md`
-- `.ai/PROMPTS/phase-cards/verify.md`
+- 交互与加载：`.ai/PROMPTS/_common.md`
+- 热快照：`.ai/STATE.md` + `.ai/TASKS.md`
+- 冷规则：按 AGENT Step A 分级；勿每轮全量重读
+- 阶段卡按需：impact → build → verify（同时只持 1 张）
 
 ---
 

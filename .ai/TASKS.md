@@ -79,4 +79,5 @@ verification: []
 1. 用户提出需求后，先生成任务草案选项，确认后再写入
 2. 阶段变化时同步 `status` / `phase`
 3. 完成后把摘要同步到 `CHANGELOG.md`，并清理 Active Task
-4. 不把历史长篇堆在这里；历史用 CHANGELOG / DECISIONS
+4. 阶段推进只走 phase-card；任务类型检查用 PROMPTS addon，不替代阶段机
+5. 不把历史长篇堆在这里；历史用 CHANGELOG / DECISIONS

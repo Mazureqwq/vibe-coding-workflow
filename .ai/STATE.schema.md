@@ -1,95 +1,119 @@
 # STATE Schema（冷说明）
 
 > 字段字典与维护规则。**默认不读全文**；仅在字段含义不清、升级 schema、或排障时按需读取。  
-> 热数据只写 `.ai/STATE.md`。
+> 热数据只写 `.ai/STATE.md`（纯值，无枚举注释）。
 
-## 设计
+## schema migration
 
-| 文件 | 角色 | 变更频率 | 缓存 |
-|------|------|----------|------|
-| `STATE.md` | 纯热快照 | 高 | 易未命中，必须短 |
-| `STATE.schema.md` | 字段说明 | 极低 | 可缓存，按需加载 |
-| `AGENT.core.md` / `WORKFLOW.slim.md` | L1 冷规则 | 低 | 稳定前缀，优先于完整全文 |
+- `schema_version: 3`：phase_result、validation_result、interaction_mode、architecture_depth、state_revision、checkpoint 重试、脱敏。
+- `workflow_version: 3`：ADR-007 quick-first；热层去注释；`risk_level`；`phase_result.evidence`；Gate 命名；light shape 语义。
+
+逻辑分组（热文件仍扁平，便于解析）：
+
+| 组 | 字段 |
+|----|------|
+| meta | schema_version, workflow_version, session_id, state_revision, writer_session_id, redaction_status |
+| boot | boot_path, ui_language*, host, interaction_mode, risk_level |
+| task | mode, process_weight*, task_*, workflow_pattern, architecture_depth, confirmed |
+| progress | current_phase, phases, phase_result, next_action, stop_reason, checkpoint, skipped_phases |
+| gates | interview.ready_*, validation_result, risk_level |
+| budget | context_budget |
 
 ## 核心字段
 
 | 字段 | 含义 |
 |------|------|
 | `schema_version` | STATE 结构版本；变化时才重读本 schema |
-| `mode` | greenfield / brownfield / hybrid |
-| `process_weight` | full / light / auto |
-| `current_phase` | 见 WORKFLOW 阶段表 |
-| `task_type` | feature/bugfix/hotfix/refactor/platform/spike/infra/security/review/chore/docs |
-| `workflow_pattern` | 大厂典型流标签，见 WORKFLOW §7 |
-| `ui_language` | 交互语言 |
+| `workflow_version` | 工作流行为版本 |
+| `interaction_mode` | low_touch / standard / deep / auto |
+| `risk_level` | low / mid / high；控制推荐包是否与 Ready 合并 |
+| `architecture_depth` | minimum / standard / deep / auto |
+| `state_revision` | 乐观并发版本；写入前比对 |
+| `writer_session_id` | 当前写者会话；冲突勿覆盖 |
+| `redaction_status` | clean / needs_review |
+| `boot_path` | resume / quick_boot / full_bootstrap |
+| `stop_reason` | waiting_user / blocked / tool_failure / output_limit / completed |
 
-## process_weight
-
-| 值 | 含义 |
-|----|------|
-| `full` | 阶段全开 |
-| `light` | 合并分析阶段 |
-| `auto` | AI 推荐后用户确认；确认后写 `resolved_as` |
-
-路径映射只以 `WORKFLOW.md` 为准，不在热快照重复。
-
-## host.choice_ui
-
-| 字段 | 含义 |
-|------|------|
-| `available` | 是否具备原生选项能力 |
-| `channel` | native_tool / native_ui / text_abc / assume |
-| `tool_name` | 探测到的工具名（不写死品牌） |
-| `mode_gated` | 是否需特定模式才能弹框 |
-| `evidence` | ≤3 条短证据 |
-
-规则见 `AGENT.md` §0.3。热快照只保留探测结果。
-
-## doc_authority
-
-`follow | update-first | code-as-source | ignore-for-task | unknown`  
-仅填与当前任务相关的文档。
-
-## interview
-
-| 字段 | 含义 |
-|------|------|
-| `status` | idle/collecting/ready/executing/paused |
-| `queue` | 待问 id |
-| `answers` / `answer_status` | 答案与 confirmed/inferred/needs_review |
-| `ready_for_execution` | 信息是否齐 |
-| `execution_confirmed` | 用户是否同意开始 |
-
-队列规则见 `AGENT.md` §3；此处不重复。
-
-## boot_path / 启动分支
+## interaction_mode
 
 | 值 | 含义 |
 |----|------|
-| `resume` | 从 checkpoint 继续 |
-| `quick_boot` | 推荐包一次确认 |
-| `full_bootstrap` | 逐项访谈 |
+| low_touch | 少问，推荐包优先 |
+| standard | 关键决策确认 |
+| deep | 完整门禁，不合并 Ready 偷渡 |
+| auto | 先推荐再 resolved |
 
-见 `START.md` 与 `AGENT.md` Step F。
+与 `process_weight` 解耦：weight 管阶段开全否，interaction 管问多少。
 
-## checkpoint
+## risk_level
 
-暂停、等待用户、阶段完成时更新。恢复时优先读热快照 checkpoint，不重扫全部冷规则。
+| 值 | 合并 Ready | 默认 interaction |
+|----|------------|------------------|
+| low | 允许与推荐包合并 | low_touch |
+| mid | 允许合并，但影响/验收需清楚 | standard |
+| high | 禁止合并；Gate 2 必问 | deep |
 
-## context_budget
+## boot_path
 
-| 字段 | 含义 |
+| 值 | 含义 |
+|----|------|
+| resume | 从 checkpoint 恢复 |
+| quick_boot | 推荐包一次确认（默认优先） |
+| full_bootstrap | 一次一题 |
+
+## phase_result
+
+```yaml
+phase_result:
+  status: pending | completed | waiting_user | blocked | failed
+  next_phase: <phase>|null
+  stop_reason: <stop_reason>|null
+  checkpoint_updated: true|false
+  evidence: []                 # 短句；verify 建议非空
+```
+
+规则：
+- 无 phase_result 更新 = 阶段未完成
+- status=completed 且非 close → 必须续跑下一 card
+- 允许停止的 stop_reason 见 AGENT.core 白名单
+
+## validation_result
+
+```yaml
+validation_result:
+  kind: verify | review | spike_result | change_checklist | null
+  status: pending | passed | accepted | failed
+  summary: null
+  commands: []
+  evidence: []
+  residual_risks: []
+  architecture_checks: []
+  recorded_at: null
+```
+
+close 前：`passed|accepted`；passed 要有 commands 或 evidence；accepted 要有用户接受风险依据。
+
+## allowed_transitions
+
+以 `.ai/workflow-machine.json` 为唯一机器来源。  
+light 跳过的分析阶段写入 `skipped_phases`，不得假装执行过。
+
+## Gate vs Load
+
+| 名称 | 含义 |
 |------|------|
-| `last_load_tier` | 本轮实际加载层级 L0–L3 |
-| `cold_rules_loaded` | 本轮是否加载了 AGENT/WORKFLOW 全文类冷规则 |
+| Load L0–L3 | 读什么上下文 |
+| Gate 0/1/2 | 能否 assume（旧称决策 L0/L1/L2） |
 
-## 维护规则（短）
+## redaction
 
-1. 每会话先读 `STATE.md` 热快照，再决定是否加载冷规则  
-2. 只改 YAML 值；禁止把长说明、映射表、协议正文写回 `STATE.md`  
-3. `evidence`、`notes`、`summary` 保持短句  
-4. `schema_version` 变化才读本 schema  
-5. host 证据未变且 `adaptation.status` 已 adapted/fallback 时，不重跑完整探测叙事  
-6. 用户改上游答案时，下游标 `needs_review`
-7. 启动时写入 `boot_path`；快速启动不得跳过 Ready/L2 门禁
-8. 优先保持热快照短小，以利多轮缓存
+写入 STATE 前去除密钥、token、个人信息；不确定则 `redaction_status: needs_review` 并暂停。
+
+## 维护规则
+
+1. 热文件只改值，不追加说明书
+2. 枚举变更先改 `workflow-machine.json` 与本 schema，再改模板
+3. `schema_version` 变化才强制重读本文件
+4. 启动写 `boot_path`；快速启动不得跳过 Gate 2
+5. completed 时校验 validation 与 checkpoint
+6. 并发写：比对 state_revision + writer_session_id

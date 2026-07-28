@@ -1,45 +1,48 @@
-# MAINTENANCE（工作流维护约定）
+# 维护清单（改工作流时读）
 
-> 给人看，也给 AI 在“改工作流本身”时按需读（L3）。  
-> 日常任务启动**不必**读本文件。
+> 日常任务不要读本文件。只有修改 `.ai` 工作流本身时使用。
 
-## 文件分层
+## 改硬规则顺序
 
-| 层 | 文件 | 职责 |
-|----|------|------|
-| 入口 | `START.md` | 用户/AI 最短启动 |
-| 热 | `STATE.md` / `TASKS.md` | 仅当前值 |
-| L1 冷 | `AGENT.core.md` / `WORKFLOW.slim.md` | 常驻规则与地图 |
-| L3 附录 | `AGENT.md` / `WORKFLOW.md` / schema / ADR… | 细协议与大表 |
-| 剧本 | `PROMPTS/*` | 场景差异；公共见 `_common.md` |
+1. `AGENT.core.md` + `WORKFLOW.slim.md`（L1）
+2. `START.md` / `PROMPTS/_common.md` / `PROMPTS/bootstrap.md`
+3. phase-cards 与（如需）任务 addon
+4. 同步完整 `AGENT.md` / `WORKFLOW.md`（L3，不得覆盖 L1）
+5. `STATE.md` 模板 + `STATE.schema.md` + `workflow-machine.json`
+6. `DECISIONS.md` ADR + `CHANGELOG.md`
+7. `examples/` 轨迹是否仍成立
+8. `node .ai/check-consistency.mjs`
 
-## 改规则时的同步顺序（防漂移）
+## ADR-007 回归点
 
-1. **先改 L1**：`AGENT.core.md` / `WORKFLOW.slim.md` / `START.md`（若影响启动）
-2. **再改附录**：完整 `AGENT.md` / `WORKFLOW.md` 对应章节
-3. **再改派生**：`bootstrap.md`、`_common.md`、README 目录与粘贴语
-4. **记一笔**：`CHANGELOG.md`；若是结构决策加 ADR
-5. **不要**把长说明写进 `STATE.md`
+- [ ] 启动决策树仍是 resume → quick_boot 默认 → full_bootstrap
+- [ ] 低风险推荐包可合并 Ready；high/deep 不可
+- [ ] light 不跳过 verify/close
+- [ ] STATE 热层无大段注释/说明书
+- [ ] phase-card 有 phase_result 结束契约
+- [ ] 任务 prompt 仍标注 addon / 非主路径
+- [ ] Load 与 Gate 命名未重新混用
+- [ ] examples 与 core/slim 无漂移
 
-## 何时必须改 core/slim
+## 何时改 L1
 
-- 新增/修改硬红线、加载层级、启动分支
+- 修改 Ready / Gate 2 / 写码最低条件
+- 修改 host 通道优先级
+- 修改 quick-first / 自动续跑 / 停止白名单
 - 修改 full/light 路径或阶段名
-- 修改 Ready / 写码最低条件
-- 修改 host 通道优先级或使用注意
 
 ## 何时只改附录
 
 - §7 大厂对照表扩写
-- §0.3 宿主探测长文
-- 访谈细项、开场骨架示例
+- 宿主探测长文、访谈细项
 - 单张 phase-card 的阶段特有检查
 
 ## 快速自检
 
-- [ ] 用户入口是否仍指向 `START.md`
-- [ ] Step A 的 L1 是否仍是 core + slim
-- [ ] phase-card 是否仍只引用 `_common`，无大段重复页眉
-- [ ] `STATE.md` 是否仍只有短 YAML
-- [ ] README / `.ai/README` 目录树是否包含 START、core、slim、schema
-- [ ] 可运行：`node .ai/check-consistency.mjs`
+- [ ] 用户入口仍指向 `START.md`
+- [ ] Step A 的 L1 仍是 core + slim
+- [ ] phase-card 只引用 `_common`，无大段重复页眉
+- [ ] `STATE.md` 只有短 YAML 纯值
+- [ ] YAML 结构、枚举、阶段覆盖、checkpoint 通过解析校验
+- [ ] README / `.ai/README` 含 START、core、slim、schema、examples
+- [ ] `node .ai/check-consistency.mjs` errors=0

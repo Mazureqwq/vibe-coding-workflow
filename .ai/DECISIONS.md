@@ -30,6 +30,52 @@
 
 ---
 
+## ADR-007: 默认 quick-first 与减负不降门禁
+
+- 日期：2026-07-28
+- 状态：accepted
+- 关联任务：T-000
+- 关联：ADR-002、ADR-003、ADR-004、ADR-005、ADR-006
+
+### 背景
+
+工作流已具备双模式、Ready/L2 门禁、启动三分叉、L0–L3 热冷分层与 core/slim。但实战仍有摩擦：
+
+1. 清晰小任务也容易走满访谈，默认路径偏重
+2. `STATE.md` 热层仍偏吵，resume 与每轮 L0 成本偏高
+3. 执行约束偏软，普通阶段摘要后易假结束
+4. 加载层级与决策级别都叫 L0/L1/L2，任务 prompt 与 phase-card 双轨易漂
+
+### 决策
+
+采用 **Burden ↓ / Gates =（减负不降门禁）**：
+
+1. **quick-first**：有 checkpoint → resume；清晰目标或“你推荐/快速启动” → `quick_boot`（默认）；目标模糊/高风险/逐项要求 → `full_bootstrap`
+2. **推荐包**一次确认整包建议；低/中风险且非 `deep` 时允许与 Ready 合并；高风险或未决 Gate 2 必须拆分
+3. **门禁保留**：Ready 前不写业务代码；Gate 2 不可 assume；light 可合并分析，不可跳过 verify/close
+4. **weight 与 interaction_mode 解耦**：问多少不等于阶段全开
+5. **STATE 只写值**；说明只在 schema
+6. **phase_result 短契约 + 自动续跑**；仅 waiting_user/blocked/completed/tool_failure/output_limit 可停
+7. **主路径唯一**：phase-card；任务 prompt 仅 addon；bootstrap 不写业务代码
+8. **命名消歧**：加载层保留 Load L0–L3；决策级改称 Gate 0/1/2（assume/confirm/gate）
+9. **light 映射**：分析可合并为 shape 输出；architecture 默认跳过，触发信号则插回；verify/close 保留
+10. **可验证性**：examples + completed 快照校验逐步补强
+
+### 选项与取舍
+
+1. 维持完整访谈优先：稳但易弃用
+2. 直接写码、取消门禁：快但回退原始 vibe coding
+3. 只加长规则：token 升、遵守率未必升
+4. **采纳** quick-first + 热瘦身 + 短契约 + 风险门禁
+
+### 后果
+
+- 正向：小任务 1 次推荐确认即可准备执行；高风险仍展开；与 ADR-003/004/005 兼容
+- 负向：推荐质量成关键路径；Ready 合并需 risk 约束；需防 core/slim 与全文漂移
+- 后续：Phase 1–4 见 CHANGELOG；checker 增加 completed 校验与热层启发式
+
+---
+
 ## ADR-006: L1 使用 AGENT.core + WORKFLOW.slim 作为常驻冷规则
 
 - 日期：2026-07-27
@@ -73,7 +119,7 @@
 
 - 正向：继续任务与目标清晰场景启动更快、更省 token
 - 负向：quick_boot 若推荐不准，需 C 转逐项修改
-- 后续：可按宿主加一键 slash 命令指向 START.md
+- 后续：可按宿主加一键 slash 命令指向 START.md；默认权重由 ADR-007 调整为 quick-first
 
 
 ## ADR-004: 上下文热冷分离与分级加载以降低 token / 缓存未命中
@@ -103,7 +149,7 @@
 
 - 正向：恢复会话与同阶段多轮成本显著下降
 - 负向：AI 需遵守加载层级，不能“无脑全读”
-- 后续：已落为 ADR-006（AGENT.core + WORKFLOW.slim）；维护见 MAINTENANCE.md
+- 后续：已落为 ADR-006（AGENT.core + WORKFLOW.slim）；热层纯值由 ADR-007 加强；维护见 MAINTENANCE.md
 
 ## ADR-003: 用大厂典型研发流驱动任务类型与流程重量路由
 
@@ -152,50 +198,38 @@
 
 1. 每次会话启动静默探测本轮是否具备选择框/选项工具
 2. 按能力选择通道：`native_tool` → `native_ui` → `text_abc` → `assume`
-3. 能力与门控写入 `STATE.host`，问题呈现跟随通道
-4. 不在通用规则中绑定某个宿主品牌的唯一实现
+3. 不把某一品牌的内部 API 写死为唯一路径
+4. 将探测结果写入 `STATE.host`，供后续轮次复用
 
 ### 选项与取舍
 
-1. 写死某宿主 API：体验最好但不可移植
-2. 永远只用 A/B/C 文本：可移植但浪费原生 UI
-3. 先探测再自适应：可移植，且在有能力时自动升级体验
+1. 写死某产品 API：体验好，但不可移植
+2. 永远纯文本 A/B/C：可移植，但浪费原生能力
+3. **探测优先 + 文本降级**：可移植且尽量用上原生选项
 
 ### 后果
 
-- 正向：一套 `.ai/` 可跨 Codex / Claude Code / Cursor 等使用
-- 正向：有弹窗能力时自动用；无则稳定降级
-- 负向：AI 需每会话维护 `STATE.host`
-- 后续：可选增加 `.ai/adapters/*` 作为某宿主的“编译提示”，但不得成为总控硬依赖
+- 正向：同一套 `.ai` 可跨宿主
+- 负向：需维护通道优先级与降级策略
+- 后续：ADR-007 明确默认更快 ≠ 默认 assume 做 Gate 2
 
+## ADR-001: 工作流以可复制 `.ai/` 包交付且项目无关
 
-## ADR-001: 采用交互式阶段门禁作为通用 Vibe Coding 工作流
-
-- 日期：2026-07-26
+- 日期：2026-07-27
 - 状态：accepted
 - 关联任务：T-000
 
 ### 背景
 
-仅放置文档不足以约束大模型；空项目与已有项目需要不同流程，且用户不应手工维护长规范。
+需要一套可迁入任意仓库的 AI 开发工作流，不能污染宿主 README/AGENTS，也不能绑死业务栈。
 
 ### 决策
 
-采用：
-
-- 双模式：greenfield / brownfield(hybrid)
-- 阶段门禁 + phase-card
-- 交互式确认后由 AI 回写 `.ai`
-- 流程重量（full/light/auto）由用户交互选择
-
-### 选项与取舍
-
-1. 仅提供静态模板：轻，但约束弱
-2. 固定完整大厂流程：规范，但小任务过重
-3. 交互式双模式 + 可选流程重量：可通用，可收敛
+- 仅分发 `.ai/` 目录
+- 状态、任务、决策、规范均落在 `.ai/`
+- 不要求宿主根目录存在特定规则文件
 
 ### 后果
 
-- 正向：可约束、可复用、低填写成本
-- 负向：需要 AI 每轮维护 STATE
-- 后续：所有任务先读 STATE/WORKFLOW
+- 正向：接入成本低、可复制
+- 负向：依赖用户/工具主动读取 `.ai/START.md`

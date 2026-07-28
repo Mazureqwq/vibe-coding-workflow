@@ -1,4 +1,4 @@
-﻿# 长期规划（Roadmap）
+# 长期规划（Roadmap）
 
 > 中长期方向板。  
 > 由 AI 在用户确认目标后维护，不要求用户手工写长文。
@@ -35,15 +35,11 @@ last_confirmed_at: null
 
 ### Now
 
-- [ ] 
 
 ### Next
 
-- [ ] 
 
 ### Later
-
-- [ ] 
 
 ---
 

@@ -1,0 +1,150 @@
+{
+  "schema_version": 1,
+  "phases": [
+    "discover",
+    "spec",
+    "architecture",
+    "recon",
+    "align",
+    "impact",
+    "plan",
+    "build",
+    "review",
+    "verify",
+    "close"
+  ],
+  "task_types": [
+    "feature",
+    "bugfix",
+    "hotfix",
+    "refactor",
+    "platform",
+    "spike",
+    "infra",
+    "security",
+    "review",
+    "chore",
+    "docs"
+  ],
+  "transitions": {
+    "unstarted": [
+      "discover",
+      "recon"
+    ],
+    "discover": [
+      "spec",
+      "plan"
+    ],
+    "spec": [
+      "architecture"
+    ],
+    "architecture": [
+      "plan"
+    ],
+    "recon": [
+      "align",
+      "plan",
+      "review"
+    ],
+    "align": [
+      "impact",
+      "review"
+    ],
+    "impact": [
+      "plan"
+    ],
+    "plan": [
+      "build",
+      "verify",
+      "close"
+    ],
+    "build": [
+      "verify"
+    ],
+    "review": [
+      "close"
+    ],
+    "verify": [
+      "build",
+      "close"
+    ],
+    "close": []
+  },
+  "routes": {
+    "feature": {
+      "validation_kind": "verify",
+      "allow_build": true
+    },
+    "bugfix": {
+      "validation_kind": "verify",
+      "allow_build": true
+    },
+    "hotfix": {
+      "validation_kind": "verify",
+      "allow_build": true
+    },
+    "refactor": {
+      "validation_kind": "verify",
+      "allow_build": true
+    },
+    "platform": {
+      "validation_kind": "verify",
+      "allow_build": true
+    },
+    "spike": {
+      "validation_kind": "spike_result",
+      "allow_build": true
+    },
+    "infra": {
+      "validation_kind": "change_checklist",
+      "allow_build": true
+    },
+    "security": {
+      "validation_kind": "verify",
+      "allow_build": true
+    },
+    "review": {
+      "validation_kind": "review",
+      "allow_build": false
+    },
+    "chore": {
+      "validation_kind": "verify",
+      "allow_build": true
+    },
+    "docs": {
+      "validation_kind": "verify",
+      "allow_build": true
+    }
+  },
+  "validation_statuses": [
+    "pending",
+    "passed",
+    "accepted",
+    "failed"
+  ],
+  "stop_reasons": [
+    "waiting_user",
+    "blocked",
+    "tool_failure",
+    "output_limit",
+    "completed"
+  ],
+  "interaction_modes": [
+    "low_touch",
+    "standard",
+    "deep",
+    "auto"
+  ],
+  "architecture_depths": [
+    "minimum",
+    "standard",
+    "deep",
+    "auto"
+  ],
+  "risk_levels": [
+    "low",
+    "mid",
+    "high"
+  ],
+  "workflow_version": 3
+}

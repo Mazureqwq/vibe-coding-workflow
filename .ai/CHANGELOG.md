@@ -1,3 +1,21 @@
+# 2026-07-28
+
+### Added
+- ADR-007：默认 quick-first 与减负不降门禁（accepted）
+- `risk_level`、`phase_result.evidence`、Gate 0/1/2 命名
+- `.ai/examples/light-bugfix.md` 与 `full-upgrade.md` 标注轨迹
+- checker：completed 快照门禁、热层注释启发式、examples/addon 检查
+
+### Changed
+- 启动默认权重改为 quick-first；推荐包低/中风险可与 Ready 合并
+- `STATE.md` 去注释纯值；`workflow_version: 3`
+- light 分析合并为 shape；verify/close 明确不可跳过
+- 任务 prompt 标注为 addon；phase-card 统一结束契约
+- README 改为 30 秒 / 5 分钟 / 维护者 三层阅读
+
+### Fixed
+- `ENGINEERING.md` 2.7 安全基线与 2.8 架构段落错位
+
 # 开发日志（Changelog）
 
 > 记录别人需要知道的变化。  

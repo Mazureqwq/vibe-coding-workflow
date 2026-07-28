@@ -10,11 +10,13 @@
 
 ## 0. 绝对优先级
 
-1. 本文件与 `.ai/WORKFLOW.md`
+1. `.ai/START.md`、`.ai/AGENT.core.md`、`.ai/WORKFLOW.slim.md`（L1 操作规则）
 2. 当前 `.ai/STATE.md`（模式 / 流程重量 / 阶段 / 文档效力）
 3. 当前任务与已确认的用户选择
-4. 其余 `.ai/*` 文档（按 STATE 中的效力执行）
-5. 仓库现实代码与脚本（Brownfield 中可能优先于过期文档）
+4. 本文件与 `.ai/WORKFLOW.md`（L3 附录，不得覆盖 L1 硬规则）
+5. 其余 `.ai/*` 文档（按 STATE 中的效力执行）与仓库现实代码
+
+若 L1 与 L3 冲突，以 L1 为准，并在维护时同步 L3。
 
 冲突时：先声明冲突 → 给选项 → 等用户选择 → 再行动。
 
@@ -145,13 +147,15 @@ ui_language_source: user_message | explicit | fallback
 | L2 高风险门禁 | `text_abc` 必问；若宿主还限制提问，则暂停并说明缺少的确认 |
 | 执行中突发 L2 | 暂停执行，回到决策通道；能切回选项 UI 模式则切，否则文本确认 |
 
-### 0.3.7 决策级别
+### 0.3.7 决策门禁（Gate 0/1/2；旧称决策 L0/L1/L2）
+
+> 加载层级称 **Load L0–L3**；决策门禁称 **Gate 0/1/2**。二者不要混用。
 
 | 级别 | 例子 | 是否可 assume |
 |------|------|----------------|
-| L0 | 语言检测、用户已说清的目标复用 | 是 |
-| L1 | mode / process_weight / task_type / 局部方案 | 仅当用户说“你定”或明确授权 |
-| L2 | 开始 build、升级 full、改架构/公共契约、接受风险 | 否，必须明确确认 |
+| Gate 0（旧 L0） | 语言检测、用户已说清的目标复用 | 是 |
+| Gate 1（旧 L1） | mode / process_weight / task_type / 局部方案 | 仅当用户说“你定”、推荐包授权 |
+| Gate 2（旧 L2） | 开始大范围 build、升级 full、改架构/公共契约、接受风险 | 否，必须明确确认 |
 
 ### 0.3.8 写入 STATE
 
@@ -210,7 +214,7 @@ host:
 3. **写回只改热值**：不把协议、大表、长说明写进 `STATE.md`
 4. **冷规则升舱要记账**：更新 `context_budget.last_load_tier`
 5. **一阶段一 card**；公共交互引用 `PROMPTS/_common.md`
-6. **启动先分支**：resume / quick_boot / full_bootstrap（见 §2 Step F）
+6. **启动先分支（quick-first）**：resume → quick_boot（默认优先）→ full_bootstrap（见 §2 Step F / ADR-007）
 7. **用户已给目标**：优先推荐包一次确认，而不是固定问满 4 轮
 8. **host 可复用则复用**；选项按 `STATE.host.choice_ui.channel` 呈现
 
@@ -277,7 +281,7 @@ host:
 |------|--------|------|
 | **L0 热径** | `STATE.md` + `TASKS.md`（仅 active） | 每轮先读；恢复 checkpoint 默认停这里 |
 | **L1 核心冷规则** | **`AGENT.core.md` + `WORKFLOW.slim.md`**（优先；完整 AGENT/WORKFLOW 作附录） | 新会话首次、schema/workflow 版本变化、路由争议 |
-| **L2 当前剧本** | 当前 `phase-card` 或任务 prompt | 进入/切换阶段时 1 张 |
+| **L2 当前剧本** | 当前 `phase-card`（唯一主路径；任务 prompt 仅 addon） | 进入/切换阶段时 1 张 |
 | **L3 附录** | `STATE.schema.md`、`WORKFLOW` §7 全文、ADR、ENGINEERING、ARCHITECTURE… | 字段不清、auto 路由、写代码前、架构争议 |
 
 #### A1. 强制顺序
@@ -347,6 +351,7 @@ Evidence: <1-3 条依据>
 
 - greenfield full/light → `discover`
 - brownfield/hybrid full/light → `recon`
+- `review` 类型覆盖上述默认入口：直接进入 `recon`，随后进入 `review`，不进入 `build`
 
 ### Step E — 交互优先
 
@@ -365,9 +370,11 @@ Evidence: <1-3 条依据>
 | 用户说法/信号 | boot_path |
 |---------------|-----------|
 | 继续/恢复/接着做 + 有 checkpoint | `resume` |
-| 快速启动/你推荐我确认/目标已清晰且接受推荐包 | `quick_boot` |
-| 默认、信息不足、要逐项改 | `full_bootstrap` |
+| 快速启动 / 你推荐我确认 / 目标已清晰（**默认优先**） | `quick_boot` |
+| 目标模糊 / 高风险需逐项 / 用户明确要逐项 | `full_bootstrap` |
 | 只问进度/状态 | 不启动新任务；输出状态摘要 |
+
+若用户已给清晰目标且未要求逐项，即使未写"快速启动"也优先 `quick_boot`（ADR-007）。
 
 写入 `STATE.boot_path` 与 `STATE.next_action`。
 
@@ -386,7 +393,9 @@ Evidence: <1-3 条依据>
 2. 快速扫仓库信号（空项目/已有代码/明显栈）— 浅层，不做 deep recon  
 3. 按 WORKFLOW §7 算法生成推荐包：mode + weight(+resolved) + type/pattern + 下一阶段 + 一句理由  
 4. **一轮只确认推荐包**（A 采用并准备执行 / B 只写入不执行 / C 转逐项访谈）  
-5. 用户选 A/B：写入 STATE/TASKS；选 A 再走 Ready 或进入阶段（仍遵守门禁）  
+   - risk=low|mid 且 interaction_mode!=deep：A 可与 Ready 合并  
+   - risk=high 或 deep 或未决 Gate 2：A 只写入推荐，下一步单独 Ready/Gate  
+5. 用户选 A/B：写入 STATE/TASKS；选 A 按上条合并规则进入执行准备或单独 Ready（仍遵守 Gate 2）  
 6. 用户选 C：转入 full_bootstrap，只问未确认项
 
 #### F4. full_bootstrap
@@ -396,7 +405,7 @@ Evidence: <1-3 条依据>
 
 #### F5. 启动成功标准
 
-- `STATE` 已有：language、host.channel（或 fallback）、mode、weight、type、goal  
+- `STATE` 已有：language、host.channel（或 fallback）、mode、weight、type、goal、interaction_mode、risk_level  
 - 有 `next_action` 与当前 phase  
 - 未 Ready 不写业务代码  
 - `context_budget.last_load_tier` 已更新  
@@ -493,7 +502,7 @@ C. <方案> — <影响>
 1. `task_goal`：一句话目标（若用户已说清，则复述确认，不算开放填空长文）
 2. `mode`：greenfield / brownfield / hybrid
 3. `process_weight`：full / light / auto
-4. `task_type`：feature / bugfix / hotfix / refactor / platform / spike / infra / security / review / chore / docs（对照 `.ai/WORKFLOW.md` §7）
+4. `task_type`：feature / bugfix / hotfix / refactor / platform / spike / infra / security / review / chore / docs（统一枚举见 `.ai/WORKFLOW.md` §7）
 5. 阶段内必要问题（范围、非目标、验收等）— 仍然每次一题
 
 > 语言检测静默完成，不单独占一题（除非用户语言冲突才问）。
@@ -564,13 +573,20 @@ C. 先只写入 STATE/TASKS，暂不执行
 - **收尾确认**：close 前确认是否归档；常规阶段之间不额外制造重复确认
 
 ---
+## 3.11 阶段结束与自动续跑（ADR-007）
+
+每张 phase-card 结束必须回写 `phase_result`（status/next_phase/stop_reason/checkpoint_updated/evidence）。
+`status=completed` 且非 close 时，必须立即加载下一 phase-card 继续；不得以阶段摘要结束本轮。
+允许停止：`waiting_user` | `blocked` | `tool_failure` | `output_limit` | `completed`。
+主路径为 phase-card；任务 prompt 仅为 addon。
+
 ## 4. 阶段门禁
 
 阶段定义见 `WORKFLOW.md`，阶段卡见 `PROMPTS/phase-cards/`。
 
 - 未满足 Exit Criteria，不得完成阶段
 - 未进入 `build`，不得大规模改业务代码
-- `verify` 未完成，不得 `close`
+- `validation_result` 未通过或未被接受，不得 `close`
 - `close` 未完成，不得标 done
 - light 流程若发现风险，必须提议升级 full 或补开阶段
 

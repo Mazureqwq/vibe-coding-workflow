@@ -14,7 +14,7 @@
 
 - **推荐入口**：`.ai/START.md`（短） > bootstrap prompt > `AGENT.core.md` + `WORKFLOW.slim.md` > 完整 AGENT/WORKFLOW 全文
 - **使用注意**（硬）：先 L0；L1 用 core/slim；STATE 只写值；同阶段不全量重读；一阶段一 card；完整大表 L3 按需
-- **启动分支**：`resume` | `quick_boot` | `full_bootstrap`（见 AGENT Step F）
+- **启动分支（quick-first）**：`resume` | `quick_boot`（默认优先） | `full_bootstrap`（见 AGENT Step F / ADR-007）
 - 用户只说“继续”且有 checkpoint → 不得重新访谈
 - 用户给目标并接受推荐 → 优先推荐包一次确认，再 Ready
 
@@ -23,7 +23,8 @@
 
 1. **Mode**：`greenfield` / `brownfield` / `hybrid`
 2. **Process Weight**：`full` / `light` / `auto`
-3. **Task Type**：`feature` / `bugfix` / `refactor` / `review` / `chore` / `docs`
+3. **Task Type**：`feature` / `bugfix` / `hotfix` / `refactor` / `platform` / `spike` / `infra` / `security` / `review` / `chore` / `docs`
+4. **Interaction Mode**：由 AI 按风险静默推荐 `low_touch` / `standard` / `deep`，用户可覆盖，不额外增加必答轮次
 
 交互语言只作为会话元数据静默写入，不占用访谈题；其余判定完成后写入 `STATE.md` 与 `TASKS.md`，再进入阶段。
 
@@ -84,6 +85,8 @@ C. auto（推荐）— 由我按风险推荐 full 或 light，你确认后再执
 
 #### light
 
+分析阶段可合并为短 **shape** 输出；**verify 与 close 不可跳过、不可合并掉**。触发架构/公共层/安全/数据风险时必须暂停升级或插回阶段。
+
 - greenfield：`discover → plan → build → verify → close`  
   - `spec`/`architecture` 默认合并进 discover/plan  
   - 若发现架构风险，必须提示升级为 full 或补开 architecture
@@ -143,9 +146,30 @@ Hybrid 与 Brownfield 同链路；Align 更严格，更常出现 `update-first`�
 | `build` | 按计划实现 | 改约定范围代码与测试 | 扩 scope、换栈 | 计划项完成且可验证 |
 | `verify` | 证明其正确 | 跑检查、补测试、列回归 | 夹带新功能 | 验收通过或问题已记录 |
 | `close` | 收尾与传承 | 回写文档、总结、下步建议 | 继续大改代码 | STATE/TASKS/CHANGELOG 已同步 |
+| `review` | 输出审查结论 | 检查代码/方案、记录风险 | 进入 build | 生成 validation_result |
 
 ---
 
+### 4.1 合法阶段转移
+
+阶段转移的唯一来源是 `.ai/workflow-machine.json`，以下为生成后的摘要；回退必须记录原因并更新 checkpoint：
+
+```yaml
+unstarted: [discover, recon]
+discover: [spec, plan]
+spec: [architecture]
+architecture: [plan]
+recon: [align, plan, review]
+align: [impact, review]
+impact: [plan]
+plan: [build, verify, close]
+build: [verify]
+review: [close]
+verify: [build, close]
+close: []
+```
+
+`close` 的唯一前置条件是 `validation_result.status=passed|accepted`，不再强制所有任务都经过名为 `verify` 的阶段。
 ## 5. 交互式落文档机制
 
 > 交互语言跟随用户；结构化 key 可稳定英文，可读内容用用户语言。
@@ -218,12 +242,12 @@ light 流程也必须做最少效力声明（至少 ENGINEERING/ARCHITECTURE/TAS
 | 线上事故 / 热修 | 生产故障、P0/P1、先恢复再复盘 | `hotfix` | light（止血）→ 必要时追加 full 复盘任务 | 最小 build→verify→close；复盘可另开任务 | 先止血与回滚；根治与防回归分开 |
 | 重构 / 架构演进 | 升级框架、拆模块、治理坏味道、性能重构 | `refactor` | full/auto | recon→align→impact→architecture?/plan→build→verify | 要有基线与迁移策略；双轨/开关/分批优先于大爆炸 |
 | 平台 / 中台能力 | 组件库、脚手架、权限中心、BFF、微前端底座 | `platform` | full/auto | discover/spec→architecture→plan→build→verify→close | 先定边界/API/兼容与接入成本；试点再推广 |
-| 预研 / Spike | 可行性、选型对比、摸底、时间盒试验 | `spike` | light | discover→plan→（可选小 build）→close | 时间盒；交付 Go/No-Go 结论与代价，不默认产品化 |
-| 基础设施 / 发布变更 | CI/CD、扩容、配置、监控、路由、环境 | `infra` | 低风险 light；高风险 full | plan→build/verify 或变更检查清单→close | 回滚、观察窗口、风险说明；高风险需 L2 确认 |
+| 预研 / Spike | 可行性、选型对比、摸底、时间盒试验 | `spike` | light | discover→plan→（可选 build）→verify→close | verify 写入 `kind=spike_result`；交付 Go/No-Go 结论与代价 |
+| 基础设施 / 发布变更 | CI/CD、扩容、配置、监控、路由、环境 | `infra` | 低风险 light；高风险 full | plan→（build）→verify→close | verify 可执行变更检查清单并写入 `kind=change_checklist` |
 | 安全 / 合规 | 漏洞、CVE、越权、隐私、合规整改 | `security` | full/auto | impact→plan→build→verify→close | 按风险时限；临时缓解与正式修复都要记录 |
 | 跨团队大型项目 | 多团队依赖、里程碑、年中/战略项目 | `feature`/`platform` | full | 完整链路 + 里程碑化 plan | 接口冻结、集成窗口、分阶段上线；STATE 记里程碑 |
 | 日常小迭代 | 文案、小 UI、局部配置、文档 | `chore`/`docs`/`feature` | light | plan→build→verify→close | 影响出本模块则升级；规范变更要 close 回写 |
-| Code Review | 只审 PR/方案，不开发 | `review` | light | recon/align 轻量 → review 结论 → close | 不进入 build；结论可写入 DECISIONS/TECH_DEBT |
+| Code Review | 只审 PR/方案，不开发 | `review` | light | recon/align 轻量 → review → close | review 结论写入 `kind=review` 的 validation_result；不进入 build |
 
 ### 7.3 推荐算法（auto 与默认提示用）
 
@@ -270,6 +294,9 @@ hotfix（最小修复）→ verify → close
 
 ```yaml
 task_type: feature | bugfix | hotfix | refactor | platform | spike | infra | security | review | chore | docs
+interaction_mode: low_touch | standard | deep | auto
+architecture_depth: minimum | standard | deep | auto
+validation_result.status: pending | passed | accepted | failed
 process_weight: full | light | auto
 process_weight_decision.resolved_as: full | light   # auto 时必填
 # 可选：
@@ -285,9 +312,9 @@ process_weight_decision.resolved_as: full | light   # auto 时必填
 ### 推进
 
 1. 检查 Exit Criteria
-2. 询问是否进入下一阶段
-3. 更新 STATE
-4. 加载下一 phase-card
+2. 更新 STATE/TASKS，并写入 checkpoint
+3. 普通阶段自动展示摘要并加载下一 phase-card
+4. 进入 `build`、升级 `full`、修改架构/公共契约、接受风险或进入 `close` 归档时，单独等待用户确认
 
 ### 回退
 
@@ -320,8 +347,8 @@ process_weight_decision.resolved_as: full | light   # auto 时必填
 
 ### 8.2 阶段切换策略
 
-- 普通阶段完成后，自动展示摘要与下一动作，不重复问“是否进入下一阶段”
-- 只有进入 `build`、升级 `full`、修改架构/公共契约、接受风险时，才单独弹确认
+- 普通阶段完成后，更新 checkpoint、加载下一张 phase-card 并继续执行；不因摘要输出而结束本轮。只有进入 build、升级 full、修改架构/公共契约、接受风险、真实阻塞或输出限制时才停止。
+- 进入 `build`、升级 `full`、修改架构/公共契约或接受风险时，单独弹确认；真实阻塞和输出限制直接保存 checkpoint 并停止
 - 用户说“继续/按计划执行”时，视为对当前计划内下一步的授权
 - 用户未授权或表达不确定时，停在 `wait_confirmation`
 
@@ -331,19 +358,33 @@ AI 应识别这些意图：`查看进度`、`修改答案`、`返回上一阶段
 
 执行前先更新 `STATE.checkpoint`，恢复时从 checkpoint 继续，不重置已确认内容。
 
+### 8.4 停止原因
+
+每次非完成态停止都必须写入 `STATE.stop_reason`：
+
+- `waiting_user`：等待 Gate 2 门禁或用户补充
+- `blocked`：真实阻塞且无法自行解除
+- `tool_failure`：工具失败且无法恢复
+- `output_limit`：输出或上下文即将耗尽，已保存 checkpoint
+- `completed`：已完成验证并完成 close
+
+没有 `stop_reason` 不得声称暂停、完成或等待用户。
+
 ## 9. 与 PROMPTS 的关系
 
 公共交互与加载约定见 `.ai/PROMPTS/_common.md`；phase-card 只保留阶段差异，避免重复页眉消耗 token。
 
 ```text
-用户需求
-  → 任务 prompt（bootstrap/new-feature/...）
-    → 判定 mode + process_weight + task_type
-      → phase-card
-        → 交互 / 执行
-          → 回写 STATE/TASKS/...
+用户需求 / START
+  → bootstrap（仅启动，不写业务代码）
+    → 判定 mode + process_weight + task_type（推荐包或逐项）
+      → phase-card（唯一阶段主路径）
+        → 可选任务 prompt addon（bugfix/new-feature/...）
+          → 交互 / 执行
+            → 回写 STATE/TASKS/...
 ```
 
-- 任务级入口：`.ai/PROMPTS/*.md`
-- 阶段级门禁：`.ai/PROMPTS/phase-cards/*.md`
+- 启动入口：`.ai/START.md` + `.ai/PROMPTS/bootstrap.md`
+- 阶段主路径：`.ai/PROMPTS/phase-cards/*.md`
+- 任务类型 addon：`.ai/PROMPTS/*.md`（不可替代 phase-card）
 

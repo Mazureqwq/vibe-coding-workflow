@@ -1,4 +1,4 @@
-# Phase Card: impact
+﻿# Phase Card: impact
 
 > 交互与加载：`PROMPTS/_common.md`；本卡只定义本阶段差异。
 
@@ -22,9 +22,30 @@
 
 ## Output → 写入
 - `TASKS.impact_scope / verification`
+- `STATE.risk_level`
 - `STATE.confirmed.implementation_plan_summary`（初稿）
 - 可选 `TECH_DEBT` 提案
 
 ## Exit Criteria
 - 影响范围与风险已确认
 - 可进入 plan
+
+## 结束契约（必须）
+
+交互与加载：见 `PROMPTS/_common.md`。
+
+结束本阶段前输出并回写：
+
+```yaml
+phase_result:
+  status: completed | waiting_user | blocked | failed
+  next_phase: <phase>|null
+  stop_reason: null | waiting_user | blocked | tool_failure | output_limit | completed
+  checkpoint_updated: true
+  evidence: []
+```
+
+- `status=completed` 且非 close → 立即加载下一 phase-card，不要停问“是否继续”
+- 需要用户 Gate 2 决策 → `waiting_user`
+- 主路径是本 card；任务 prompt 仅 addon
+

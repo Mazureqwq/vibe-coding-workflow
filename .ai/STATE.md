@@ -1,34 +1,37 @@
 # STATE（热快照）
 
-> 只存当前值，不写说明书。字段含义见 `.ai/STATE.schema.md`。  
-> AI 维护；用户确认选项。回写时只改值，不把规则正文写回本文件。
+> 只存当前值。字段含义见 `.ai/STATE.schema.md`。禁止把规则正文写回本文件。
 
 ```yaml
-schema_version: 2
-workflow_version: 1
+schema_version: 3
+workflow_version: 3
 session_id: null
 checkpoint_id: null
 last_checkpoint_at: null
-
-# --- core ---
-mode: unknown                  # greenfield | brownfield | hybrid | unknown
-process_weight: unknown        # full | light | auto | unknown
+state_revision: 0
+writer_session_id: null
+redaction_status: clean
+mode: unknown
+process_weight: unknown
+interaction_mode: auto
 current_phase: unstarted
+architecture_depth: auto
 task_id: null
-task_type: null                # feature | bugfix | hotfix | refactor | platform | spike | infra | security | review | chore | docs
+task_type: null
 task_title: null
-workflow_pattern: null         # feature_delivery | bugfix | hotfix | refactor | platform | spike | infra | security | review | chore
+workflow_pattern: null
 updated_at: null
+stop_reason: null
 ui_language: unknown
-ui_language_source: unknown    # user_message | explicit | fallback | unknown
-
-# --- host (probe result only) ---
+ui_language_source: unknown
+risk_level: low
+boot_path: null
 host:
   name: unknown
   detected_at: null
   choice_ui:
-    available: unknown         # true | false | unknown
-    channel: unknown           # native_tool | native_ui | text_abc | assume | unknown
+    available: unknown
+    channel: unknown
     tool_name: null
     max_questions_per_turn: 1
     max_options_per_question: 3
@@ -36,20 +39,16 @@ host:
     supports_other_autofill: unknown
     mode_gated: false
     mode_requirement: null
-    evidence: []               # keep <=3 short strings
+    evidence: []
   adaptation:
-    status: pending            # pending | adapted | fallback
+    status: pending
     strategy: probe_first
     notes: null
-
-# --- weight decision ---
 process_weight_decision:
   selected: unknown
   resolved_as: null
   reason: null
   confirmed_by_user: false
-
-# --- doc authority ---
 doc_authority:
   AGENT.md: follow
   WORKFLOW.md: follow
@@ -60,8 +59,6 @@ doc_authority:
   DECISIONS.md: unknown
   TECH_DEBT.md: unknown
   CHANGELOG.md: follow
-
-# --- confirmed (short only) ---
 confirmed:
   goal: null
   non_goals: []
@@ -69,8 +66,21 @@ confirmed:
   constraints: []
   architecture_choice: null
   implementation_plan_summary: null
-
-# --- phases ---
+phase_result:
+  status: pending
+  next_phase: null
+  stop_reason: null
+  checkpoint_updated: false
+  evidence: []
+validation_result:
+  kind: null
+  status: pending
+  summary: null
+  commands: []
+  evidence: []
+  residual_risks: []
+  architecture_checks: []
+  recorded_at: null
 phases:
   discover: { status: pending, notes: null }
   spec: { status: pending, notes: null }
@@ -80,41 +90,36 @@ phases:
   impact: { status: pending, notes: null }
   plan: { status: pending, notes: null }
   build: { status: pending, notes: null }
+  review: { status: pending, notes: null }
   verify: { status: pending, notes: null }
   close: { status: pending, notes: null }
-
 skipped_phases: []
 open_questions: []
-
-boot_path: null                 # resume | quick_boot | full_bootstrap | null
-
 next_action:
-  intent: bootstrap            # bootstrap | interview | wait_confirmation | resume | execute_phase | quick_boot
+  intent: bootstrap
   phase: null
   summary: 等待 START 入口分支（resume / quick_boot / full_bootstrap）
-
-# --- interview ---
 interview:
-  status: idle                 # idle | collecting | ready | executing | paused
+  status: idle
   current_question_id: null
   current_question: null
   queue: []
   asked: []
   answers: {}
-  answer_status: {}            # id -> confirmed | inferred | needs_review
+  answer_status: {}
   ready_for_execution: false
   execution_confirmed: false
-
-# --- checkpoint ---
 checkpoint:
-  status: clean                # clean | paused | needs_review
-  summary: null
+  status: clean
+  recorded_at: null
   safe_to_resume: true
   pending_user_action: null
-
-# --- context budget (optional telemetry) ---
+  operation_id: null
+  last_completed_step: null
+  changed_files: []
+  safe_to_retry: true
 context_budget:
-  last_load_tier: null         # L0 | L1 | L2 | L3
+  last_load_tier: null
   cold_rules_loaded: false
   notes: null
 ```

@@ -5,28 +5,42 @@
 ## Goal
 把模糊想法收敛成清晰问题定义。
 
+## light shape（process_weight=light）
+一次产出短 shape，避免另开 spec/architecture：
+- 问题 / 范围 / 非目标
+- 成功标准（可验收）
+- 约束与风险（一句话）
+- 是否需要插回 architecture（默认否）
+
+写入 `confirmed.*`；若跳过 spec/architecture，记入 `skipped_phases`。
+
 ## Allowed
 - 提问、复述理解、给选项
 - 写 STATE / TASKS 的目标与非目标
-- 建议 process_weight 是否需要升级
+- 建议 process_weight / interaction_mode 是否需要升级
 
 ## Forbidden
 - 写业务代码
-- 过早锁定复杂技术实现
-- 让用户手写长需求文档
-
-## Interaction
-至少确认：
-1. 目标
-2. 范围 / 非目标
-3. 成功标准
-4. 关键约束
+- 未确认目标就进入大规模设计或实现
 
 ## Output → 写入
-- `STATE.confirmed.goal/non_goals/success_criteria/constraints`
-- `TASKS.md` Active Task 草案
+- `confirmed.goal/non_goals/success_criteria/constraints`
+- `TASKS` 草案字段
+- `risk_level`（如可判断）
 
 ## Exit Criteria
-- 用户确认问题定义
-- 有可检查的成功标准
-- next phase 已确定（full→spec，light→plan）
+- 目标与成功标准清楚，或 light shape 已确认
+- 可进入 spec（full）或 plan（light）
+
+## 结束契约（必须）
+
+```yaml
+phase_result:
+  status: completed | waiting_user | blocked | failed
+  next_phase: spec | plan | null
+  stop_reason: null | waiting_user | blocked | tool_failure | output_limit
+  checkpoint_updated: true
+  evidence: []
+```
+
+- `status=completed` → 立即加载下一 phase-card

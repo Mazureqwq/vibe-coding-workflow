@@ -15,7 +15,7 @@
 - 热快照：`.ai/STATE.md` + `.ai/TASKS.md`
 - 冷规则：按 AGENT Step A 分级；勿每轮全量重读
 - 未启动先 bootstrap
-- 路由见 WORKFLOW §7（L3 按需）
+- 路由见 WORKFLOW §7（详细参考规则按需读取）
 
 ---
 

@@ -13,7 +13,7 @@
 
 ## AI（静默）
 
-- Load L0：STATE/TASKS 空任务
+- 读取热状态快照：STATE/TASKS 为空任务
 - boot_path = quick_boot
 - 浅层 recon：React + 已有 login 页
 - risk_level = low；interaction_mode = low_touch；weight = light；type = bugfix

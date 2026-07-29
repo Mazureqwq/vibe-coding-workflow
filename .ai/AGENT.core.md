@@ -1,4 +1,4 @@
-# AGENT.core（L1 常驻冷规则）
+# AGENT.core（核心运行规则）
 
 > 会话需要冷规则时**优先读本文件**，不要默认打开完整 `AGENT.md`。  
 > 完整附录：宿主长协议、访谈细项、开场骨架等见 `AGENT.md`。  
@@ -6,13 +6,13 @@
 
 ## 绝对优先级
 
-1. `START.md` / 本文件 / `WORKFLOW.slim.md`（L1 操作规则）
+1. `START.md` / 本文件 / `WORKFLOW.slim.md`（核心操作规则）
 2. 当前 `STATE.md`（热快照）
 3. 已确认的用户选择
-4. 完整 `AGENT.md` / `WORKFLOW.md`（L3 附录，不得覆盖 L1 硬规则）
+4. 完整 `AGENT.md` / `WORKFLOW.md`（详细参考附录，不得覆盖核心硬规则）
 5. 其余 `.ai/*` 与仓库现实代码
 
-若 L1 与 L3 内容冲突，以 L1 为准，并在维护时同步 L3。
+若核心运行规则与详细参考规则冲突，以核心运行规则为准，并在维护时同步详细参考规则。
 
 冲突：先声明 → 给选项 → 等选择 → 再行动。
 
@@ -20,7 +20,7 @@
 
 必须：
 
-- 先 Load L0 热快照，再按需升舱
+- 先读热状态快照，再按需读取更大范围的规则
 - 交互语言跟随用户
 - 先确认再写 `.ai`，先门禁再写业务代码
 - 一次一题；有原生选项能力则优先弹框
@@ -41,12 +41,12 @@
 ## 使用注意（短）
 
 1. 入口优先 `START.md`
-2. 每轮先读 `STATE.md` + `TASKS.md` active（Load L0）
+2. 每轮先读 `STATE.md` + `TASKS.md` active（热状态快照）
 3. STATE 只写值；说明在 `STATE.schema.md`
 4. 一阶段一 card；公共交互见 `PROMPTS/_common.md`
 5. host 已 adapted 且证据未变 → 复用
 6. 用户已给目标 → **优先 quick_boot 推荐包**一次确认
-7. 更新 `context_budget.last_load_tier`
+7. 更新 `context_budget.last_context_scope`
 
 ## 交互档位
 
@@ -62,22 +62,22 @@
 ## 上下文组装顺序
 
 为提高 Prompt Cache 命中率，读取和组装分开：
-1. 读取 Load L0：`STATE.md` + `TASKS.md`，判断恢复和路由。
+1. 读取热状态快照：`STATE.md` + `TASKS.md`，判断恢复和路由。
 2. 组装稳定前缀：`AGENT.core.md`、`WORKFLOW.slim.md`、`PROMPTS/_common.md`、当前 phase-card。
 3. 将动态 STATE/TASKS 和用户最新决策放在稳定规则之后。
-4. L3 附录只在需要时追加，不放入常驻前缀。
+4. 详细参考附录只在需要时追加，不放入常驻前缀。
 
-## 分级加载（Load L0–L3）
+## 上下文读取范围
 
 | 层级 | 读什么 | 何时 |
 |------|--------|------|
-| Load L0 | `STATE.md` + `TASKS.md` | 每轮先读；resume 默认 |
-| Load L1 | **本文件** + `WORKFLOW.slim.md` | 新会话、版本变化、路由/门禁需要 |
-| Load L2 | 当前 1 张 phase-card | 进阶段时；任务 prompt 仅按需 addon |
-| Load L3 | 完整 AGENT/WORKFLOW 章节、§7 大表、schema、ADR、ENGINEERING… | 争议/附录/写码前 |
+| 热状态快照 | `STATE.md` + `TASKS.md` | 每轮先读；resume 默认 |
+| 核心运行规则 | **本文件** + `WORKFLOW.slim.md` | 新会话、版本变化、路由/门禁需要 |
+| 当前阶段卡 | 当前 1 张 phase-card | 进阶段时；任务 prompt 仅按需 addon |
+| 详细参考规则 | 完整 AGENT/WORKFLOW 章节、§7 大表、schema、ADR、ENGINEERING… | 争议/附录/写码前 |
 
 顺序：先 STATE → TASKS →（需时）本文件 + WORKFLOW.slim → 当前 card。  
-同阶段多轮：默认 Load L0，禁止无故重读 L1 全文。
+同阶段多轮：默认只保留热状态快照，禁止无故重读核心运行规则全文。
 
 ## 宿主选择通道（短）
 
@@ -94,7 +94,7 @@
 
 ## 决策门禁（Gate 0/1/2）
 
-> 旧称决策级别 L0/L1/L2。为避免与 Load 层级混淆，执行时统一用 Gate。
+> 决策门禁使用 Gate 名称；上下文读取范围使用上表的语义名称，二者不要混用。
 
 | 级 | 例子 | assume |
 |----|------|--------|
@@ -168,14 +168,14 @@
 ## 全局禁令
 
 - 不编造文件/API；不提交密钥；不做范围外重构；不跳过 verify
-- 不让用户填长空表；不把大表写回 STATE；不一次加载无关键 L3 附录
+- 不让用户填长空表；不把大表写回 STATE；不一次加载无关键详细参考附录
 - 不取消 Ready；不用 `assume` 代替 Gate 2
 
 ## 开场骨架（短）
 
 ```text
 ## 当前状态
-- Language / Host / Load tier / Boot path / Mode / Weight / Phase / Next / Risk
+- Language / Host / Context scope / Boot path / Mode / Weight / Phase / Next / Risk
 
 ## 本轮只确认一件事
 - 问题 + 通道 + 选项
@@ -186,4 +186,4 @@
 ## 维护（改工作流时）
 
 - 改硬规则：先改本文件与 `WORKFLOW.slim.md`，再同步完整 `AGENT.md` / `WORKFLOW.md`
-- 清单见 `MAINTENANCE.md`（L3，日常任务不读）
+- 清单见 `MAINTENANCE.md`（详细参考规则，日常任务不读）

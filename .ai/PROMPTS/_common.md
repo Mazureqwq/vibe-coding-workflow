@@ -25,12 +25,12 @@
 - 入口优先 `START.md`
 - STATE 只写值；不每轮重读冷规则全文
 - 启动先分支：resume / quick_boot（默认优先） / full_bootstrap
-- 决策门禁称 Gate 0/1/2；加载层级称 Load L0–L3
+- 决策门禁称 Gate 0/1/2；上下文读取使用语义名称：热状态快照、核心运行规则、当前阶段卡、详细参考规则
 
 ## 默认加载
 - 热：`STATE.md` + `TASKS.md` active
 - 当前仅 1 张 phase-card
-- Load L1 用 `AGENT.core.md` + `WORKFLOW.slim.md`；不每轮重读完整全文
+- 核心运行规则使用 `AGENT.core.md` + `WORKFLOW.slim.md`；不每轮重读完整全文
 
 ## 停止白名单
 允许：`waiting_user` | `blocked` | `tool_failure` | `output_limit` | `completed`  

@@ -39,12 +39,12 @@
 
 ### 背景
 
-工作流已具备双模式、Ready/L2 门禁、启动三分叉、L0–L3 热冷分层与 core/slim。但实战仍有摩擦：
+工作流已具备双模式、Ready/高风险变更门禁、启动三分叉、语义化上下文读取范围与 core/slim。但实战仍有摩擦：
 
 1. 清晰小任务也容易走满访谈，默认路径偏重
-2. `STATE.md` 热层仍偏吵，resume 与每轮 L0 成本偏高
+2. `STATE.md` 热状态快照仍偏吵，resume 与每轮读取成本偏高
 3. 执行约束偏软，普通阶段摘要后易假结束
-4. 加载层级与决策级别都叫 L0/L1/L2，任务 prompt 与 phase-card 双轨易漂
+4. 上下文读取范围与决策门禁曾共用代号，任务 prompt 与 phase-card 双轨易漂
 
 ### 决策
 
@@ -57,7 +57,7 @@
 5. **STATE 只写值**；说明只在 schema
 6. **phase_result 短契约 + 自动续跑**；仅 waiting_user/blocked/completed/tool_failure/output_limit 可停
 7. **主路径唯一**：phase-card；任务 prompt 仅 addon；bootstrap 不写业务代码
-8. **命名消歧**：加载层保留 Load L0–L3；决策级改称 Gate 0/1/2（assume/confirm/gate）
+8. **命名消歧**：上下文读取范围使用语义名称；决策级使用 Gate 0/1/2（assume/confirm/gate）
 9. **light 映射**：分析可合并为 shape 输出；architecture 默认跳过，触发信号则插回；verify/close 保留
 10. **可验证性**：examples + completed 快照校验逐步补强
 
@@ -76,7 +76,7 @@
 
 ---
 
-## ADR-006: L1 使用 AGENT.core + WORKFLOW.slim 作为常驻冷规则
+## ADR-006: 核心运行规则使用 AGENT.core + WORKFLOW.slim
 
 - 日期：2026-07-27
 - 状态：accepted
@@ -84,17 +84,17 @@
 
 ### 背景
 
-分级加载已规定 L1，但 L1 仍易被实现成“打开完整 AGENT+WORKFLOW”，启动与多轮成本回弹。
+上下文读取范围已规定核心运行规则，但仍易被实现成“打开完整 AGENT+WORKFLOW”，启动与多轮成本回弹。
 
 ### 决策
 
-- 新增 `AGENT.core.md`、`WORKFLOW.slim.md` 作为默认 L1
-- 完整 `AGENT.md` / `WORKFLOW.md` 降为 L3 附录（大表、细协议、长文案）
+- 新增 `AGENT.core.md`、`WORKFLOW.slim.md` 作为默认核心运行规则
+- 完整 `AGENT.md` / `WORKFLOW.md` 降为详细参考附录（大表、细协议、长文案）
 - `START.md` / bootstrap / Step A 明确 core/slim 优先
 
 ### 后果
 
-- 正向：L1 体积可控，更利缓存命中
+- 正向：核心规则体积可控，更利缓存命中
 - 负向：需避免 core/slim 与全文长期漂移（改规则时先改 core/slim，再同步全文）
 
 
@@ -135,7 +135,7 @@
 ### 决策
 
 1. `STATE.md` 仅保留热快照；说明外移 `STATE.schema.md`
-2. 启动改为 L0–L3 分级加载；禁止同阶段每轮全量重读冷规则
+2. 启动改为语义化上下文读取；禁止同阶段每轮全量重读冷规则
 3. phase-card / 任务 prompt 去公共页眉，改引用 `PROMPTS/_common.md`
 4. host 探测结果可复用；§7 大表等附录按需加载
 

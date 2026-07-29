@@ -31,6 +31,7 @@
 | `state_revision` | 乐观并发版本；写入前比对 |
 | `writer_session_id` | 当前写者会话；冲突勿覆盖 |
 | `redaction_status` | clean / needs_review |
+| `context_budget.last_context_scope` | hot_snapshot / core_rules / phase_card / reference_rules；记录本轮读取到的最大语义范围 |
 | `boot_path` | resume / quick_boot / full_bootstrap |
 | `stop_reason` | waiting_user / blocked / tool_failure / output_limit / completed |
 
@@ -102,8 +103,8 @@ light 跳过的分析阶段写入 `skipped_phases`，不得假装执行过。
 
 | 名称 | 含义 |
 |------|------|
-| Load L0–L3 | 读什么上下文 |
-| Gate 0/1/2 | 能否 assume（旧称决策 L0/L1/L2） |
+| 上下文读取范围 | 读什么上下文 |
+| Gate 0/1/2 | 能否 assume：已明确事实、常规方案、高风险变更 |
 
 ## redaction
 

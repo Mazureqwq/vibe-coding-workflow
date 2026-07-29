@@ -28,11 +28,11 @@
 
 > 读取判断 与 组装前缀 分开：先用热快照路由，再把稳定规则放前、动态状态放后。
 
-1. **L0 热快照**：`.ai/STATE.md` + `.ai/TASKS.md`（只看 active）
+1. **热状态快照**：`.ai/STATE.md` + `.ai/TASKS.md`（只看 active）
 2. 判定 `boot_path`（见下方决策树）
-3. 需要冷规则时读 **L1**：`AGENT.core.md` + `WORKFLOW.slim.md`（不要默认打开完整 AGENT/WORKFLOW）
-4. 进阶段时只加载 **1 张** `PROMPTS/phase-cards/<phase>.md`
-5. 争议/附录/大表才升 **L3**
+3. 需要核心规则时读 `AGENT.core.md` + `WORKFLOW.slim.md`（不要默认打开完整 AGENT/WORKFLOW）
+4. 进阶段时只加载 **1 张** `PROMPTS/phase-cards/<phase>.md`（当前阶段卡）
+5. 争议、附录或大表才读取详细参考规则
 
 组装稳定前缀时优先：`AGENT.core` → `WORKFLOW.slim` → `PROMPTS/_common` → 当前 phase-card；  
 动态 `STATE`/`TASKS`/用户最新决策放在稳定规则之后，提高 prompt cache 命中。
@@ -58,7 +58,7 @@
 4. 当前阶段  
 5. 是否开始执行  
 
-`workflow_pattern`、`host_channel`、Load/Gate 层级默认内部消化，必要时再解释。
+`workflow_pattern`、`host_channel`、上下文读取范围和决策门禁默认内部消化，必要时再解释。
 
 ## boot_path 行为
 

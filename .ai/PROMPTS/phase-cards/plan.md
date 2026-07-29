@@ -21,11 +21,11 @@
 
 ## Interaction
 请用户确认（Gate 1；若含架构/契约大改则为 Gate 2）：
-`	ext
+```text
 A. 按此计划执行（推荐）
 B. 调整任务顺序/范围
 C. 先补信息再计划
-`
+```
 
 ## Output → 写入
 - `TASKS.md` 任务卡完整字段
@@ -40,13 +40,13 @@ C. 先补信息再计划
 
 ## 结束契约（必须）
 
-`yaml
+```yaml
 phase_result:
   status: completed | waiting_user | blocked | failed
   next_phase: build | null
   stop_reason: null | waiting_user | blocked | tool_failure | output_limit
   checkpoint_updated: true
   evidence: []
-`
+```
 
 - `status=completed` → 立即加载 build card（除非 Gate 2 未确认）

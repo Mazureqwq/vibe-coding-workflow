@@ -119,7 +119,7 @@ checkpoint:
   changed_files: []
   safe_to_retry: true
 context_budget:
-  last_load_tier: null
+  last_context_scope: null
   cold_rules_loaded: false
   notes: null
 ```

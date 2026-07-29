@@ -1,13 +1,13 @@
-# WORKFLOW.slim（L1 流程地图）
+# WORKFLOW.slim（核心流程地图）
 
 > 需要流程地图时**优先读本文件**。  
-> 大厂对照大表、长选项文案等见完整 `WORKFLOW.md`（L3）。  
+> 大厂对照大表、长选项文案等见完整 `WORKFLOW.md`（详细参考规则）。
 > 策略：ADR-007 quick-first；主路径 = phase-card。
 
 ## 启动
 
 - 入口：`START.md`
-- 使用注意：先 Load L0；STATE 只写值；一 card；L3 按需
+- 使用注意：先读热状态快照；STATE 只写值；一阶段一张卡；详细参考规则按需读取
 - 分支（quick-first）：`resume` | `quick_boot`（默认优先） | `full_bootstrap`
 - 语言静默跟随；host 通道静默探测/复用
 - 一次一题；`quick_boot` 用推荐包；低/中风险可与 Ready 合并
@@ -53,7 +53,7 @@
 | 热修 | light 止血；根治另开任务 |
 | 不足 | 先问 1 题再推荐，或 full_bootstrap |
 
-完整算法与大表：`WORKFLOW.md` §7（L3）。
+完整算法与大表：`WORKFLOW.md` §7（详细参考规则）。
 
 ## 双模式主链路
 

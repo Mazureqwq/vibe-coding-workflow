@@ -54,7 +54,7 @@
 
 - 宿主能力探测与自适应交互协议（`AGENT.md` §0.3）
   - 通道：`native_tool` / `native_ui` / `text_abc` / `assume`
-  - 决策级别：L0 / L1 / L2
+  - 决策级别：已明确事实 / 常规选择 / 高风险门禁
 - `STATE.host`：记录本轮选择框能力、门控与适配状态
 - ADR-002：能力探测优先于品牌绑定
 - 大厂典型流程对照表与任务路由（`WORKFLOW.md` §7）
@@ -63,13 +63,13 @@
   - ADR-003：用典型研发流驱动类型与重量
 - 上下文预算优化（token / cache）
   - STATE.md 热冷分离 + STATE.schema.md
-  - AGENT Step A：L0–L3 分级加载
+  - AGENT Step A：热状态快照、核心运行规则、当前阶段卡、详细参考规则
   - PROMPTS/_common.md；phase-card 去公共 Interaction Rule
   - ADR-004：热冷分离与分级加载
 - `.ai/START.md` 短启动入口
 - 使用注意写入 AGENT §0.5；启动三分支 resume/quick_boot/full_bootstrap
 - ADR-005：短入口 + 推荐包启动
-- `AGENT.core.md` + `WORKFLOW.slim.md` 作为默认 L1 常驻冷规则
+- `AGENT.core.md` + `WORKFLOW.slim.md` 作为默认核心运行规则
 - ADR-006：core/slim 优先于完整全文- `MAINTENANCE.md`：core/slim 与全文防漂移同步顺序
 - `check-consistency.mjs`：入口/分层一致性自检
 

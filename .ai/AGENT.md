@@ -1,6 +1,6 @@
 # AI 工作规范（通用总控）
 
-> L1 默认读 `AGENT.core.md`；本文件为完整总控附录。用户入口：`START.md`。
+> 默认读 `AGENT.core.md`；本文件为完整总控附录。用户入口：`START.md`。
 
 > 本文件是 Vibe Coding 工作流的总控规则。  
 > 目标：约束大模型「按阶段工作」，而不是「直接写代码」。  
@@ -10,13 +10,13 @@
 
 ## 0. 绝对优先级
 
-1. `.ai/START.md`、`.ai/AGENT.core.md`、`.ai/WORKFLOW.slim.md`（L1 操作规则）
+1. `.ai/START.md`、`.ai/AGENT.core.md`、`.ai/WORKFLOW.slim.md`（核心操作规则）
 2. 当前 `.ai/STATE.md`（模式 / 流程重量 / 阶段 / 文档效力）
 3. 当前任务与已确认的用户选择
-4. 本文件与 `.ai/WORKFLOW.md`（L3 附录，不得覆盖 L1 硬规则）
+4. 本文件与 `.ai/WORKFLOW.md`（详细参考附录，不得覆盖核心硬规则）
 5. 其余 `.ai/*` 文档（按 STATE 中的效力执行）与仓库现实代码
 
-若 L1 与 L3 冲突，以 L1 为准，并在维护时同步 L3。
+若核心运行规则与详细参考规则冲突，以核心运行规则为准，并在维护时同步详细参考规则。
 
 冲突时：先声明冲突 → 给选项 → 等用户选择 → 再行动。
 
@@ -126,13 +126,13 @@ ui_language_source: user_message | explicit | fallback
 | 1 | `native_tool` | 发现可用的选择题/选项工具，且当前模式允许调用 | 弹出可点击选项 |
 | 2 | `native_ui` | 无独立 tool，但宿主消息格式能渲染可点选项 | 可点击选项 |
 | 3 | `text_abc` | 无原生能力，或原生能力暂时不可用 | A/B/C 文本 |
-| 4 | `assume` | 仅 L0 低风险 / 用户说“你定” / 宿主强烈要求少打断 | 采用推荐并标注假设 |
+| 4 | `assume` | 仅已明确的低风险事实 / 用户说“你定” / 宿主强烈要求少打断 | 采用推荐并标注假设 |
 
 ### 0.3.5 自适应优化（有能力时）
 
 一旦 `choice_ui.available=true` 且当前允许使用：
 
-1. **所有 L1/L2 决策优先走原生选项**，不要只甩纯文本
+1. **所有常规选择和高风险确认优先走原生选项**，不要只甩纯文本
 2. 把工作流问题编译成宿主所需 schema（题目 id、短 header、2–3 选项、推荐项、影响说明）
 3. 遵守宿主限制：每轮最多几题、每题几选项、是否自动带 Other、label 长度等
 4. 若 `mode_gated=true`：访谈/门禁决策尽量在要求模式下进行；执行阶段可离开该模式
@@ -142,20 +142,20 @@ ui_language_source: user_message | explicit | fallback
 
 | 决策级别 | 无原生选择框时的做法 |
 |----------|----------------------|
-| L0 可推断 | 不提问，直接写入，`answer_status=inferred` |
-| L1 普通选择 | `text_abc` 一问一答 |
-| L2 高风险门禁 | `text_abc` 必问；若宿主还限制提问，则暂停并说明缺少的确认 |
-| 执行中突发 L2 | 暂停执行，回到决策通道；能切回选项 UI 模式则切，否则文本确认 |
+| 已明确事实 | 不提问，直接写入，`answer_status=inferred` |
+| 常规选择 | `text_abc` 一问一答 |
+| 高风险门禁 | `text_abc` 必问；若宿主还限制提问，则暂停并说明缺少的确认 |
+| 执行中突发高风险决策 | 暂停执行，回到决策通道；能切回选项 UI 模式则切，否则文本确认 |
 
-### 0.3.7 决策门禁（Gate 0/1/2；旧称决策 L0/L1/L2）
+### 0.3.7 决策门禁（Gate 0/1/2）
 
-> 加载层级称 **Load L0–L3**；决策门禁称 **Gate 0/1/2**。二者不要混用。
+> 上下文读取范围使用“热状态快照 / 核心运行规则 / 当前阶段卡 / 详细参考规则”；决策门禁称 **Gate 0/1/2**。二者不要混用。
 
 | 级别 | 例子 | 是否可 assume |
 |------|------|----------------|
-| Gate 0（旧 L0） | 语言检测、用户已说清的目标复用 | 是 |
-| Gate 1（旧 L1） | mode / process_weight / task_type / 局部方案 | 仅当用户说“你定”、推荐包授权 |
-| Gate 2（旧 L2） | 开始大范围 build、升级 full、改架构/公共契约、接受风险 | 否，必须明确确认 |
+| Gate 0 | 语言检测、用户已说清的目标复用 | 是 |
+| Gate 1 | mode / process_weight / task_type / 局部方案 | 仅当用户说“你定”、推荐包授权 |
+| Gate 2 | 开始大范围 build、升级 full、改架构/公共契约、接受风险 | 否，必须明确确认 |
 
 ### 0.3.8 写入 STATE
 
@@ -185,7 +185,7 @@ host:
 - 把 Codex/某工具的 API 写死成唯一实现
 - 未探测就绑定 `native_tool`
 - 无选择框时假装“已优化为弹窗”
-- 因宿主能多题并行，就把 Mode+Weight+Type 强行塞一轮（仍默认一次一题；仅当题目互相独立且均为 L1、且宿主明确允许多题时，才可最多按宿主上限批量）
+- 因宿主能多题并行，就把 Mode+Weight+Type 强行塞一轮（仍默认一次一题；仅当题目互相独立、属于常规选择且宿主明确允许多题时，才可最多按宿主上限批量）
 
 ---
 
@@ -194,7 +194,7 @@ host:
 > 完整协议见启动 Step A。这里只定红线。
 
 1. **热冷分离**：`STATE.md` 只放值；说明书在 `STATE.schema.md`
-2. **分级加载**：L0→L1（core/slim）→L2→L3，能少读不多读
+2. **按语义范围读取**：热状态快照→核心运行规则→当前阶段卡→详细参考规则，能少读不多读
 3. **禁止每轮全量重读** AGENT + WORKFLOW（除非版本变化/冲突/用户要求）
 4. **单阶段单 card**：同时只加载 1 张 phase-card
 5. **附录按需**：§7 大表、ADR、ENGINEERING、ARCHITECTURE 不进默认必读
@@ -210,9 +210,9 @@ host:
 ### 必做
 
 1. **入口优先** `.ai/START.md`；冷规则优先 `AGENT.core.md` + `WORKFLOW.slim.md`（若用户点名完整 AGENT/WORKFLOW，仍按分级只取必要章节）
-2. **每轮先 L0**：`STATE.md` + `TASKS.md` active
+2. **每轮先读热状态快照**：`STATE.md` + `TASKS.md` active
 3. **写回只改热值**：不把协议、大表、长说明写进 `STATE.md`
-4. **冷规则升舱要记账**：更新 `context_budget.last_load_tier`
+4. **读取范围要记账**：更新 `context_budget.last_context_scope`
 5. **一阶段一 card**；公共交互引用 `PROMPTS/_common.md`
 6. **启动先分支（quick-first）**：resume → quick_boot（默认优先）→ full_bootstrap（见 §2 Step F / ADR-007）
 7. **用户已给目标**：优先推荐包一次确认，而不是固定问满 4 轮
@@ -222,7 +222,7 @@ host:
 
 1. 把“使用注意”只留在聊天里、不落状态就执行
 2. 无 checkpoint 变化时每轮重读 AGENT+WORKFLOW 全文
-3. 同时加载多张 phase-card 或无必要 L3 附录
+3. 同时加载多张 phase-card 或无必要详细参考附录
 4. 在 build 前用长篇教用户怎么用工作流（短状态 + 一题即可）
 5. 快速启动后跳过 Ready/门禁直接大改代码
 
@@ -253,7 +253,7 @@ host:
 - 先给可选项，再让用户拍板
 - 信息不足时只访谈、不执行
 - 先探测宿主选择框/选项工具能力，再自适应提问通道
-- 按 L0–L3 分级加载上下文，不每轮全量重读冷规则
+- 按语义范围读取上下文，不每轮全量重读冷规则
 - 优先 START 入口与 resume/quick_boot 分支，减少空转访谈
 - 一次只问一个关键问题；有原生选项能力则优先弹出可点击选项
 
@@ -271,18 +271,18 @@ host:
 
 ## 2. 每次会话启动协议（强制）
 
-### Step A — 分级加载 + 宿主能力探测（省 token / 利缓存）
+### Step A — 语义化上下文读取 + 宿主能力探测（省 token / 利缓存）
 
 > 目标：冷规则少变且靠前可缓存；热状态短且后置；禁止每轮全量重读。
 
-#### A0. 加载层级
+#### A0. 上下文读取范围
 
 | 层级 | 读什么 | 何时 |
 |------|--------|------|
-| **L0 热径** | `STATE.md` + `TASKS.md`（仅 active） | 每轮先读；恢复 checkpoint 默认停这里 |
-| **L1 核心冷规则** | **`AGENT.core.md` + `WORKFLOW.slim.md`**（优先；完整 AGENT/WORKFLOW 作附录） | 新会话首次、schema/workflow 版本变化、路由争议 |
-| **L2 当前剧本** | 当前 `phase-card`（唯一主路径；任务 prompt 仅 addon） | 进入/切换阶段时 1 张 |
-| **L3 附录** | `STATE.schema.md`、`WORKFLOW` §7 全文、ADR、ENGINEERING、ARCHITECTURE… | 字段不清、auto 路由、写代码前、架构争议 |
+| **热状态快照** | `STATE.md` + `TASKS.md`（仅 active） | 每轮先读；恢复 checkpoint 默认停这里 |
+| **核心运行规则** | **`AGENT.core.md` + `WORKFLOW.slim.md`**（优先；完整 AGENT/WORKFLOW 作附录） | 新会话首次、schema/workflow 版本变化、路由争议 |
+| **当前阶段卡** | 当前 `phase-card`（唯一主路径；任务 prompt 仅 addon） | 进入/切换阶段时 1 张 |
+| **详细参考规则** | `STATE.schema.md`、`WORKFLOW` §7 全文、ADR、ENGINEERING、ARCHITECTURE… | 字段不清、auto 路由、写代码前、架构争议 |
 
 #### A1. 强制顺序
 
@@ -290,10 +290,10 @@ host:
 2. 读 `.ai/TASKS.md` 的 Active Task  
 3. 若 `checkpoint.safe_to_resume=true` 且任务进行中：  
    - **不要**自动全量重读 AGENT/WORKFLOW  
-   - 只加载当前 `phase-card`（L2）  
-   - 仅当用户改流程/出现冲突/版本变化时升到 L1/L3  
-4. 若新任务或 `mode/process_weight` 未知：加载 L1（`AGENT.core.md` + `WORKFLOW.slim.md`），再 bootstrap；仅当 core/slim 不足时才打开完整 AGENT/WORKFLOW 对应章节  
-5. `STATE.schema.md` **默认不读**（L3）
+   - 只加载当前 `phase-card`（当前阶段卡）
+   - 仅当用户改流程、出现冲突或版本变化时才读取核心运行规则或详细参考规则
+4. 若新任务或 `mode/process_weight` 未知：读取核心运行规则（`AGENT.core.md` + `WORKFLOW.slim.md`），再 bootstrap；仅当 core/slim 不足时才打开完整 AGENT/WORKFLOW 对应章节
+5. `STATE.schema.md` **默认不读**（详细参考规则）
 
 #### A2. 宿主探测（静默、可短路径）
 
@@ -312,8 +312,8 @@ host:
 
 - 只更新 `STATE.md` 的值；说明文写在 `STATE.schema.md`  
 - 装配上下文时尽量：**冷规则 → 热 STATE/TASKS → 当前 card**（不要把 STATE 夹在两大本规则中间反复重贴）  
-- 更新 `context_budget.last_load_tier`  
-- 同阶段多轮访谈：默认 L0 + 已在上下文中的规则，**禁止每轮重新全文读取 AGENT/WORKFLOW**
+- 更新 `context_budget.last_context_scope`
+- 同阶段多轮访谈：默认热状态快照 + 已在上下文中的规则，**禁止每轮重新全文读取 AGENT/WORKFLOW**
 
 ### Step B — 判定 Mode
 
@@ -380,7 +380,7 @@ Evidence: <1-3 条依据>
 
 #### F2. resume
 
-1. L0 + 当前 phase-card  
+1. 热状态快照 + 当前阶段卡
 2. 恢复摘要（已确认/待处理/下一动作）  
 3. **只问 1 题**：继续 / 查看 / 修改  
 4. 不重跑 Mode/Weight 访谈
@@ -389,7 +389,7 @@ Evidence: <1-3 条依据>
 
 前置：用户已给一句话目标，或明确授权“你推荐”。
 
-1. L0；缺冷规则再 L1 = `AGENT.core.md` + `WORKFLOW.slim.md`（不要一上来完整全文）  
+1. 热状态快照；缺核心规则时再读取 `AGENT.core.md` + `WORKFLOW.slim.md`（不要一上来完整全文）
 2. 快速扫仓库信号（空项目/已有代码/明显栈）— 浅层，不做 deep recon  
 3. 按 WORKFLOW §7 算法生成推荐包：mode + weight(+resolved) + type/pattern + 下一阶段 + 一句理由  
 4. **一轮只确认推荐包**（A 采用并准备执行 / B 只写入不执行 / C 转逐项访谈）  
@@ -408,7 +408,7 @@ Evidence: <1-3 条依据>
 - `STATE` 已有：language、host.channel（或 fallback）、mode、weight、type、goal、interaction_mode、risk_level  
 - 有 `next_action` 与当前 phase  
 - 未 Ready 不写业务代码  
-- `context_budget.last_load_tier` 已更新  
+- `context_budget.last_context_scope` 已更新
 
 
 ## 3. 交互式确认协议（顺序访谈 + 可点选）
@@ -457,9 +457,9 @@ Evidence: <1-3 条依据>
 1. 读 `STATE.host.choice_ui`
 2. 若 `available=unknown`：先补探测，再提问
 3. 若 `mode_gated=true` 且当前不在 `mode_requirement`：  
-   - L2：提示需要的模式/条件，或降级文本确认  
-   - L1：可降级 `text_abc` / 在允许时再弹  
-   - L0：直接 assume
+   - 高风险决策：提示需要的模式/条件，或降级文本确认
+   - 常规选择：可降级 `text_abc` / 在允许时再弹
+   - 已明确事实：直接 assume
 4. 按 channel 编译同一道题，不改题意，只改载体
 
 #### 呈现要求（所有 channel 通用）
@@ -468,7 +468,7 @@ Evidence: <1-3 条依据>
 - 每个选项：短标题 + 一句影响说明
 - 问题一句话；前最多 1–2 句上下文
 - 需要自由补充：若宿主自动提供 Other/补充则不要再造“其他”；否则才加“其他/我补充”
-- 默认一次一题；仅当宿主 `max_questions_per_turn>1` 且题目均为独立 L1 时，才可批量（仍建议启动访谈保持单题）
+- 默认一次一题；仅当宿主 `max_questions_per_turn>1` 且题目均为独立常规选择时，才可批量（仍建议启动访谈保持单题）
 
 #### channel 编译
 
@@ -642,7 +642,7 @@ C. 先只写入 STATE/TASKS，暂不执行
 - 不让用户填长文空表
 - 不把说明书/大表写回 `STATE.md`
 - 不在同阶段每轮全量重读 AGENT + WORKFLOW
-- 不一次加载多张 phase-card 或无关键 L3 附录
+- 不一次加载多张 phase-card 或无关键详细参考附录
 
 ---
 
@@ -654,7 +654,7 @@ C. 先只写入 STATE/TASKS，暂不执行
 ## 当前状态
 - Language: ...
 - Host choice UI: available/channel/tool（探测结果，静默）
-- Load tier: L0|L1|L2|L3
+- Context scope: hot_snapshot|core_rules|phase_card|reference_rules
 - Boot path: resume|quick_boot|full_bootstrap
 - Mode: ...
 - Process Weight: ...

@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import fs from "fs";
 import path from "path";
+import { spawnSync } from "child_process";
 import { fileURLToPath } from "url";
 
 const root = path.dirname(fileURLToPath(import.meta.url));
@@ -80,6 +81,8 @@ const validateStateSnapshot = (snapshot, definition) => {
   requireEnum(snapshot.task_type, [null, ...definition.task_types], "STATE.task_type");
   requireEnum(snapshot.stop_reason, [null, ...definition.stop_reasons], "STATE.stop_reason");
   requireEnum(snapshot.redaction_status, ["clean", "needs_review"], "STATE.redaction_status");
+  const contextScope = snapshot.context_budget?.last_context_scope;
+  requireEnum(contextScope, [null, "hot_snapshot", "core_rules", "phase_card", "reference_rules"], "STATE.context_budget.last_context_scope");
   const phaseResult = snapshot.phase_result ?? {};
   requireEnum(phaseResult.status, ["pending", "completed", "waiting_user", "blocked", "failed"], "STATE.phase_result.status");
   if (phaseResult.next_phase !== null && !definition.phases.includes(phaseResult.next_phase)) errors.push("STATE.phase_result.next_phase is not a known phase");
@@ -117,7 +120,7 @@ const validateStateSnapshot = (snapshot, definition) => {
     warnings.push("current_phase is post-ready but interview.ready_for_execution is false");
   }
 };
-const required = ["START.md", "AGENT.core.md", "AGENT.md", "WORKFLOW.slim.md", "WORKFLOW.md", "STATE.md", "STATE.schema.md", "TASKS.md", "PROMPTS/_common.md", "PROMPTS/bootstrap.md", "MAINTENANCE.md", "ARCHITECTURE.md", "workflow-machine.json"];
+const required = ["START.md", "AGENT.core.md", "AGENT.md", "WORKFLOW.slim.md", "WORKFLOW.md", "STATE.md", "STATE.schema.md", "TASKS.md", "PROMPTS/_common.md", "PROMPTS/bootstrap.md", "MAINTENANCE.md", "ARCHITECTURE.md", "workflow-machine.json", "tests/workflow-traces.mjs"];
 const requireText = (text, needle, message) => { if (!text.includes(needle)) errors.push(message); };
 for (const file of required) if (!exists(file)) errors.push("missing file: " + file);
 let machine = null;
@@ -162,7 +165,18 @@ requireText(architectureCard, "minimum", "architecture card should define depth 
 requireText(architecture, "## 6. 扩展路径", "ARCHITECTURE.md should define extension path");
 requireText(closeCard, "validation_result", "close card should require validation result");
 if (machine && state) {
-  try { validateStateSnapshot(parseStateYaml(state), machine); } catch (error) { errors.push("STATE.md YAML parse failed: " + error.message); }
+  try {
+    const snapshot = parseStateYaml(state);
+    validateStateSnapshot(snapshot, machine);
+    const from = snapshot.current_phase;
+    const to = snapshot.phase_result?.next_phase;
+    if (to !== null && !(machine.transitions?.[from] ?? []).includes(to)) {
+      errors.push(`STATE.phase_result.next_phase is not a legal transition: ${from} -> ${to}`);
+    }
+    if (snapshot.phase_result?.status === "completed" && from !== "close" && to === null) {
+      errors.push("completed non-close phase must declare next_phase");
+    }
+  } catch (error) { errors.push("STATE.md YAML parse failed: " + error.message); }
 }
 if (machine) {
   const phases = machine.phases ?? [];
@@ -208,7 +222,19 @@ if (!state.includes("changed_files: []")) errors.push("STATE.md should track cha
 if (!state.includes("commands: []") || !state.includes("evidence: []")) warnings.push("STATE.md validation evidence fields are missing");
 if (state.length > 6000) warnings.push("STATE.md is large (>6k chars)");
 const cardsDir = rel("PROMPTS/phase-cards");
-if (fs.existsSync(cardsDir)) for (const name of fs.readdirSync(cardsDir)) { if (!name.endsWith(".md")) continue; const text = fs.readFileSync(path.join(cardsDir, name), "utf8"); if (!text.includes("_common")) warnings.push("phase-card missing _common ref: " + name); }
+if (fs.existsSync(cardsDir)) for (const name of fs.readdirSync(cardsDir)) {
+  if (!name.endsWith(".md")) continue;
+  const text = fs.readFileSync(path.join(cardsDir, name), "utf8");
+  if (!text.includes("_common")) warnings.push("phase-card missing _common ref: " + name);
+  const fenceCount = (text.match(/^```/gm) ?? []).length;
+  if (fenceCount % 2 !== 0) errors.push("phase-card has unbalanced code fences: " + name);
+}
+
+// Semantic vocabulary guard: numeric context aliases are intentionally forbidden.
+const semanticAliasPattern = /(?:^|[^A-Za-z0-9])L(?:0|1|2|3)(?:[^A-Za-z0-9]|$)/;
+for (const file of ["START.md", "AGENT.md", "AGENT.core.md", "WORKFLOW.md", "WORKFLOW.slim.md", "STATE.schema.md", "PROMPTS/_common.md", "PROMPTS/bootstrap.md", "MAINTENANCE.md", "DECISIONS.md", "CHANGELOG.md", "README.md"]) {
+  if (exists(file) && semanticAliasPattern.test(read(file))) errors.push("deprecated numeric context alias found in " + file);
+}
 
 // hot-layer comments heuristic (ADR-007)
 if (state) {
@@ -225,6 +251,9 @@ if (exists("PROMPTS/bugfix.md")) {
   const bugfix = read("PROMPTS/bugfix.md");
   if (!bugfix.includes("Addon") && !bugfix.includes("非主路径")) warnings.push("PROMPTS/bugfix.md should be marked as addon / non-main-path");
 }
+
+const traceRun = spawnSync(process.execPath, [rel("tests/workflow-traces.mjs")], { encoding: "utf8" });
+if (traceRun.status !== 0) errors.push("workflow trace tests failed");
 console.log("ai-workflow consistency check");
 if (errors.length) { console.log("errors:"); for (const error of errors) console.log(" - " + error); } else console.log("errors: 0");
 if (warnings.length) { console.log("warnings:"); for (const warning of warnings) console.log(" - " + warning); } else console.log("warnings: 0");

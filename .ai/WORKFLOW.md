@@ -1,6 +1,6 @@
 # 工作流定义（双模式 + 可选流程重量 + 阶段门禁）
 
-> L1 默认读 `WORKFLOW.slim.md`；本文件作完整地图/大表附录（L3）。
+> 日常默认读 `WORKFLOW.slim.md`；本文件作完整地图、大表和详细参考附录。
 
 > 定义 Vibe Coding 的标准流程。  
 > 只描述阶段、门禁、交互、路由；不绑定具体业务。
@@ -13,7 +13,7 @@
 ### 1.0 启动入口与使用注意
 
 - **推荐入口**：`.ai/START.md`（短） > bootstrap prompt > `AGENT.core.md` + `WORKFLOW.slim.md` > 完整 AGENT/WORKFLOW 全文
-- **使用注意**（硬）：先 L0；L1 用 core/slim；STATE 只写值；同阶段不全量重读；一阶段一 card；完整大表 L3 按需
+- **使用注意**（硬）：先读热状态快照；核心规则用 core/slim；STATE 只写值；同阶段不全量重读；一阶段一张卡；完整大表按需读取
 - **启动分支（quick-first）**：`resume` | `quick_boot`（默认优先） | `full_bootstrap`（见 AGENT Step F / ADR-007）
 - 用户只说“继续”且有 checkpoint → 不得重新访谈
 - 用户给目标并接受推荐 → 优先推荐包一次确认，再 Ready
@@ -30,7 +30,7 @@
 
 ### 1.1 顺序访谈与可点选
 
-- 上下文按 L0–L3 **分级加载**（见 `.ai/AGENT.md` Step A / §0.4）；热数据用短 `STATE.md`，说明见 `STATE.schema.md`
+- 上下文按语义范围读取（见 `.ai/AGENT.md` Step A / §0.4）；热数据用短 `STATE.md`，字段说明见 `STATE.schema.md`
 - 启动时先**静默探测宿主选择框能力**，写入 `STATE.host`（见 `.ai/AGENT.md` §0.3）
 - 启动项（目标 / Mode / Weight / Type）**分多轮**完成，不合并成一张总问卷
 - 每轮：1 个问题 + 2–3 个选项（推荐项第一）
@@ -53,7 +53,7 @@
 - 不绑定 Codex / Claude / Cursor 等具体产品；只绑定“能力 → 通道”
 - 探测信号：本轮 tools、系统说明、模式约束、是否能渲染可点选项
 - 有选择题工具/UI：把工作流问题编译为宿主 schema 并调用
-- 无能力：`text_abc`；L0 可 `assume` 并标记 `inferred`
+- 无能力：`text_abc`；仅对低风险、已明确的信息可 `assume` 并标记 `inferred`
 - 每会话重新校正 `STATE.host`；历史结果仅作参考
 - 详细协议：`.ai/AGENT.md` §0.3
 
